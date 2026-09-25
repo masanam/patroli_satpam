@@ -1,0 +1,26 @@
+{
+	"flutter": {
+		"platforms": {
+			"android": {
+				"default": {
+					"projectId": "patroli-e48c9",
+					"appId": "1:955333261797:android:1eda59be8befcd414b570c",
+					"fileOutput": "android/app/google-services.json"
+				}
+			},
+			"dart": {
+				"lib/firebase_options.dart": {
+					"projectId": "patroli-e48c9",
+					"configurations": {
+						"android": "1:955333261797:android:1eda59be8befcd414b570c",
+						"web": "1:955333261797:web:923e72f63824d9f84b570c",
+						"windows": "1:955333261797:web:d3aba094912b76084b570c"
+					}
+				}
+			}
+		}
+	},
+	"firestore": {
+		"rules": "firestore.rules"
+	}
+}

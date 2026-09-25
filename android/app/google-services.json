@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "955333261797",
+    "project_id": "patroli-e48c9",
+    "storage_bucket": "patroli-e48c9.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:955333261797:android:1eda59be8befcd414b570c",
+        "android_client_info": {
+          "package_name": "com.example.police_patrol_app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCuH5a4ESmPX2VE45JqMi5Ga9DPQjhqBNw"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
