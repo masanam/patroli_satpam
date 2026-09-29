@@ -12,7 +12,12 @@
           "package_name": "com.example.police_patrol_app"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "955333261797-m57kcdg90m2g0lv5q7hsrdkbjsovsbhq.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyCuH5a4ESmPX2VE45JqMi5Ga9DPQjhqBNw"
@@ -20,7 +25,19 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "955333261797-m57kcdg90m2g0lv5q7hsrdkbjsovsbhq.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "955333261797-c39oj94t9ae9314fei9d3ammi221psu1.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.policePatrolApp"
+              }
+            }
+          ]
         }
       }
     }
