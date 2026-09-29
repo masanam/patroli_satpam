@@ -1,6 +1,6 @@
 name: Build Flutter APK
 
-on:
+'on':
   workflow_dispatch:
 
 permissions:
@@ -26,17 +26,22 @@ jobs:
         with:
           flutter-version: '3.47.5'
           cache: true
-  
-      - name: Check Flutter version
-        run: flutter --version
+
+      - name: Check versions
+        run: |
+          flutter --version
+          java -version
+
+      - name: Flutter clean
+        run: flutter clean
 
       - name: Install dependencies
         run: flutter pub get
 
-      - name: Build APK
+      - name: Build Release APK
         run: flutter build apk --release --no-tree-shake-icons
 
-      - name: Rename APK
+      - name: Prepare APK
         run: |
           mkdir -p release
           cp build/app/outputs/flutter-apk/app-release.apk \
