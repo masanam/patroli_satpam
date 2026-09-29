@@ -32,7 +32,7 @@ if (flutterVersionName == null) {
 android {
     namespace "com.example.police_patrol_app"
 
-    compileSdk flutter.compileSdkVersion
+    compileSdk 36
     ndkVersion flutter.ndkVersion
 
     compileOptions {
