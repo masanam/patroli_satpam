@@ -31,12 +31,16 @@ jobs:
         run: |
           flutter --version
           java -version
-
+          
       - name: Flutter clean
         run: flutter clean
 
       - name: Install dependencies
         run: flutter pub get
+
+      - name: Configure Gradle memory
+        run: |
+          echo "org.gradle.jvmargs=-Xmx6G -XX:MaxMetaspaceSize=2G -XX:+HeapDumpOnOutOfMemoryError" >> android/gradle.properties
 
       - name: Build Release APK
         run: flutter build apk --release --no-tree-shake-icons
