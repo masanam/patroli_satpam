@@ -48,4 +48,3 @@ jobs:
           name: patroli-satpam-apk
           path: release/patroli-satpam-release.apk
           retention-days: 30
-```
