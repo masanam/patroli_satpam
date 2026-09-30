@@ -131,63 +131,67 @@ class _MapPageState extends State<MapPage> {
           Positioned(
             left: 16.0,
             bottom: 16.0,
-            child: GetBuilder<MapController>(
-              builder: (controller) => SpeedDial(
-                animatedIcon: AnimatedIcons.menu_close,
-                animatedIconTheme: IconThemeData(size: 22.0),
-                visible: true, // Toggle visibility of dial
-                curve: Curves.bounceIn,
-                overlayColor: Colors.black,
-                overlayOpacity: 0.5,
-                onOpen: () => print('OPENING DIAL'),
-                onClose: () => print('DIAL CLOSED'),
-                tooltip: 'Speed Dial',
-                heroTag: 'speed-dial-hero-tag',
-                backgroundColor: Colors.white,
-                foregroundColor: Colors.black,
-                elevation: 8.0,
-                shape: CircleBorder(),
-                children: [
-                  SpeedDialChild(
-                    child: Icon(
-                        controller.isRecording ? Icons.stop : Icons.play_arrow),
-                    backgroundColor:
-                        controller.isRecording ? Colors.red : Colors.green,
-                    label: controller.isRecording
-                        ? 'Stop Recording'
-                        : 'Start Recording',
-                    labelStyle: TextStyle(fontSize: 18.0),
-                    onTap: () {
-                      if (controller.isRecording) {
-                        controller.stopRecording();
-                      } else {
-                        controller.initiateRecording(context);
-                      }
-                    },
-                  ),
-                  SpeedDialChild(
-                    child: Icon(Icons.add_alert),
-                    backgroundColor: Colors.blue,
-                    label: 'Report Incident',
-                    labelStyle: TextStyle(fontSize: 18.0),
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => ReportPage(
-                              patrolRouteId: controller.currentPatrolRouteId),
-                        ),
-                      );
-                    },
-                  ),
-                  SpeedDialChild(
-                    child: const Icon(Icons.qr_code_scanner),
-                    backgroundColor: Colors.deepPurple,
-                    label: 'Scan Checkpoint',
-                    labelStyle: const TextStyle(fontSize: 18.0),
-                    onTap: () => controller.openCheckpointScanner(context),
-                  ),
-                ],
+            child: SafeArea(
+              top: false,
+              child: GetBuilder<MapController>(
+                builder: (controller) => SpeedDial(
+                  animatedIcon: AnimatedIcons.menu_close,
+                  animatedIconTheme: IconThemeData(size: 22.0),
+                  visible: true, // Toggle visibility of dial
+                  curve: Curves.bounceIn,
+                  overlayColor: Colors.black,
+                  overlayOpacity: 0.5,
+                  onOpen: () => print('OPENING DIAL'),
+                  onClose: () => print('DIAL CLOSED'),
+                  tooltip: 'Speed Dial',
+                  heroTag: 'speed-dial-hero-tag',
+                  backgroundColor: Colors.white,
+                  foregroundColor: Colors.black,
+                  elevation: 8.0,
+                  shape: CircleBorder(),
+                  children: [
+                    SpeedDialChild(
+                      child: Icon(controller.isRecording
+                          ? Icons.stop
+                          : Icons.play_arrow),
+                      backgroundColor:
+                          controller.isRecording ? Colors.red : Colors.green,
+                      label: controller.isRecording
+                          ? 'Stop Recording'
+                          : 'Start Recording',
+                      labelStyle: TextStyle(fontSize: 18.0),
+                      onTap: () {
+                        if (controller.isRecording) {
+                          controller.stopRecording();
+                        } else {
+                          controller.initiateRecording(context);
+                        }
+                      },
+                    ),
+                    SpeedDialChild(
+                      child: Icon(Icons.add_alert),
+                      backgroundColor: Colors.blue,
+                      label: 'Report Incident',
+                      labelStyle: TextStyle(fontSize: 18.0),
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => ReportPage(
+                                patrolRouteId: controller.currentPatrolRouteId),
+                          ),
+                        );
+                      },
+                    ),
+                    SpeedDialChild(
+                      child: const Icon(Icons.qr_code_scanner),
+                      backgroundColor: Colors.deepPurple,
+                      label: 'Scan Checkpoint',
+                      labelStyle: const TextStyle(fontSize: 18.0),
+                      onTap: () => controller.openCheckpointScanner(context),
+                    ),
+                  ],
+                ),
               ),
             ),
           )

@@ -32,18 +32,51 @@ class FirebaseService {
 
   Future<void> addPreApprovalRequest(
       String email, UserRole selectedRole) async {
-    await _firestore.collection('PreApprovedUsers').doc(email).set({
+    final request = _firestore.collection('PreApprovedUsers').doc(email);
+    final existing = await request.get();
+    if (existing.exists) {
+      return;
+    }
+    await request.set({
       'email': email,
       'isApproved': false,
-      'role': selectedRole.toString(),
+      'role': selectedRole.index,
+      'requestedAt': FieldValue.serverTimestamp(),
     });
   }
 
   // Function to check if a user is pre-approved
   Future<bool> isUserPreApproved(String email) async {
-    DocumentSnapshot snapshot =
+    return await getApprovedUserRole(email) != null;
+  }
+
+  Future<UserRole?> getApprovedUserRole(String email) async {
+    final snapshot =
         await _firestore.collection('PreApprovedUsers').doc(email).get();
-    return snapshot.exists && snapshot['isApproved'] == true;
+    final data = snapshot.data();
+    if (!snapshot.exists ||
+        data is! Map<String, dynamic> ||
+        data['isApproved'] != true) {
+      return null;
+    }
+    final roleIndex = _roleIndex(data['role']);
+    if (roleIndex == null) {
+      throw StateError('Peran pada persetujuan akun tidak valid.');
+    }
+    return UserRole.values[roleIndex];
+  }
+
+  int? _roleIndex(dynamic role) {
+    if (role is int && role >= 0 && role < UserRole.values.length) {
+      return role;
+    }
+    if (role is String) {
+      final normalized = role.replaceFirst('UserRole.', '');
+      for (final userRole in UserRole.values) {
+        if (userRole.name == normalized) return userRole.index;
+      }
+    }
+    return null;
   }
 
   // Function to register a new user
@@ -233,10 +266,15 @@ class FirebaseService {
 
   Future<bool> hasCheckpointBeenScanned(
       String sessionId, String checkpointId) async {
+    final officerId = _auth.currentUser?.uid;
+    if (officerId == null) {
+      throw StateError('Sesi login sudah berakhir.');
+    }
     final snapshot = await patrolRoutesCollection
         .doc(sessionId)
         .collection('scans')
         .where('checkpointId', isEqualTo: checkpointId)
+        .where('officerId', isEqualTo: officerId)
         .limit(1)
         .get();
     return snapshot.docs.isNotEmpty;

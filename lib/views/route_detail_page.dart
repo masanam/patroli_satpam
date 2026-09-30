@@ -1,360 +1,451 @@
 import 'package:flutter/material.dart';
-import 'package:police_patrol_app/models/patrol_route.dart';
-import 'package:police_patrol_app/services/firebase_service.dart';
-import 'package:police_patrol_app/models/user.dart';
-import 'package:police_patrol_app/models/incident.dart';
 import 'package:flutter_map/flutter_map.dart' as fm;
 import 'package:latlong2/latlong.dart' as ll;
-import 'package:video_player/video_player.dart';
+import 'package:police_patrol_app/models/incident.dart';
+import 'package:police_patrol_app/models/patrol_route.dart';
+import 'package:police_patrol_app/services/firebase_service.dart';
 
 class RouteDetailPage extends StatefulWidget {
+  const RouteDetailPage({super.key, required this.patrolRoute});
   final PatrolRoute patrolRoute;
 
-  RouteDetailPage({required this.patrolRoute});
-
   @override
-  _RouteDetailPageState createState() => _RouteDetailPageState();
+  State<RouteDetailPage> createState() => _RouteDetailPageState();
 }
 
 class _RouteDetailPageState extends State<RouteDetailPage> {
-  final FirebaseService _firebaseService = FirebaseService();
-  final Set<fm.Marker> _markers = {};
-  final Set<fm.Polyline> _polylines = {};
-  DateTime? _selectedDate;
-  String? _selectedIncidentType;
-  String _searchQuery = '';
-  String _selectedSortOrder = 'Date (Newest First)';
-
+  final _firebaseService = FirebaseService();
+  final _mapController = fm.MapController();
   List<Incident> _incidents = [];
-
-  // List of sorting options for demonstration purposes
-  List<String> _sortOptions = ['Date (Newest First)', 'Date (Oldest First)'];
-
-  // List of incident types for demonstration purposes
-  List<String> _incidentTypes = ['All Types', 'Theft', 'Assault', 'Accident'];
+  bool _isLoading = true;
 
   @override
   void initState() {
     super.initState();
-    _initMapElements();
-    _fetchIncidentsForRoute();
+    _loadIncidents();
   }
 
-  void _fetchIncidentsForRoute() async {
-    List<Incident> incidents = await _firebaseService
-        .getIncidentsForPatrolRoute(widget.patrolRoute.id);
-    if (!mounted) return;
-    setState(() => _incidents = incidents);
-    _initMapElements(); // re-initialize map elements
-  }
-
-  void _initMapElements() {
-    _markers.clear();
-    _polylines.clear();
-    _markers.add(fm.Marker(
-      key: const ValueKey('start'),
-      point: ll.LatLng(widget.patrolRoute.locations.first.latitude,
-          widget.patrolRoute.locations.first.longitude),
-      width: 40,
-      height: 40,
-      child: const Icon(Icons.flag, color: Colors.green, size: 32),
-    ));
-    _markers.add(fm.Marker(
-      key: const ValueKey('end'),
-      point: ll.LatLng(widget.patrolRoute.locations.last.latitude,
-          widget.patrolRoute.locations.last.longitude),
-      width: 40,
-      height: 40,
-      child: const Icon(Icons.flag, color: Colors.red, size: 32),
-    ));
-
-    _polylines.add(fm.Polyline(
-      points: widget.patrolRoute.locations
-          .map((loc) => ll.LatLng(loc.latitude, loc.longitude))
-          .toList(),
-      color: Colors.blue,
-      strokeWidth: 4,
-    ));
-
-    for (final incident in _incidents) {
-      _markers.add(fm.Marker(
-        key: ValueKey(incident.id),
-        point: ll.LatLng(incident.latitude, incident.longitude),
-        width: 40,
-        height: 40,
-        child: const Icon(Icons.warning, color: Colors.orange, size: 32),
-      ));
+  Future<void> _loadIncidents() async {
+    try {
+      final incidents = await _firebaseService
+          .getIncidentsForPatrolRoute(widget.patrolRoute.id);
+      if (mounted) setState(() => _incidents = incidents);
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
-  void _zoomToIncident(Incident incident) {
-    // The incident list remains the source of truth; the map is fitted to the route.
-  }
+  @override
+  Widget build(BuildContext context) {
+    final route = widget.patrolRoute;
+    final hasGps = route.locations.isNotEmpty;
+    final duration =
+        (route.endTime ?? DateTime.now()).difference(route.startTime);
+    final distanceMeters = _routeDistance(route.locations);
+    final averageSpeed = duration.inSeconds == 0
+        ? 0.0
+        : (distanceMeters / 1000) / (duration.inSeconds / 3600);
 
-  void _viewMedia(String mediaUrl, String mediaType) {
-    Navigator.push(
-        context,
-        MaterialPageRoute(
-            builder: (context) =>
-                FullScreenMediaView(mediaUrl: mediaUrl, mediaType: mediaType)));
-  }
-
-  void _selectDate(BuildContext context) async {
-    DateTime? pickedDate = await showDatePicker(
-      context: context,
-      initialDate: DateTime.now(),
-      firstDate: widget.patrolRoute.startTime,
-      lastDate: widget.patrolRoute.endTime ??
-          DateTime.now(), // Fallback to current date/time if endTime is null
+    return Scaffold(
+      backgroundColor: const Color(0xFFF2F5F4),
+      appBar: AppBar(
+        title: const Text('Detail rute'),
+        backgroundColor: Colors.transparent,
+        foregroundColor: Colors.blueGrey.shade900,
+        elevation: 0,
+      ),
+      body: RefreshIndicator(
+        onRefresh: _loadIncidents,
+        child: ListView(
+          padding: const EdgeInsets.fromLTRB(16, 4, 16, 28),
+          children: [
+            _RouteHeader(isActive: route.endTime == null, routeId: route.id),
+            const SizedBox(height: 16),
+            _GpsMap(
+              mapController: _mapController,
+              locations: route.locations,
+              incidents: _incidents,
+            ),
+            const SizedBox(height: 16),
+            Text('Ringkasan patroli',
+                style: Theme.of(context)
+                    .textTheme
+                    .titleLarge
+                    ?.copyWith(fontWeight: FontWeight.w700)),
+            const SizedBox(height: 10),
+            Wrap(
+              spacing: 10,
+              runSpacing: 10,
+              children: [
+                _MetricCard(
+                    icon: Icons.route_outlined,
+                    label: 'Jarak',
+                    value: hasGps ? _formatDistance(distanceMeters) : '—'),
+                _MetricCard(
+                    icon: Icons.timer_outlined,
+                    label: 'Durasi',
+                    value: _formatDuration(duration)),
+                _MetricCard(
+                    icon: Icons.speed_outlined,
+                    label: 'Rata-rata',
+                    value: hasGps
+                        ? '${averageSpeed.toStringAsFixed(1)} km/j'
+                        : '—'),
+                _MetricCard(
+                    icon: Icons.location_searching_outlined,
+                    label: 'Titik GPS',
+                    value: '${route.locations.length}'),
+              ],
+            ),
+            const SizedBox(height: 20),
+            _SectionCard(
+              title: 'Informasi rute',
+              icon: Icons.info_outline,
+              child: Column(children: [
+                _InfoRow('ID rute', route.id),
+                _InfoRow('Petugas', route.officerId),
+                _InfoRow('Mulai', _formatDateTime(route.startTime)),
+                _InfoRow(
+                    'Selesai',
+                    route.endTime == null
+                        ? 'Patroli sedang berlangsung'
+                        : _formatDateTime(route.endTime!)),
+                _InfoRow(
+                    'Status GPS',
+                    hasGps
+                        ? 'Terekam (${route.locations.length} titik)'
+                        : 'Belum ada data GPS'),
+                if (hasGps)
+                  _InfoRow(
+                      'Koordinat terakhir', _coordinate(route.locations.last)),
+              ]),
+            ),
+            const SizedBox(height: 20),
+            Text('Aktivitas & insiden',
+                style: Theme.of(context)
+                    .textTheme
+                    .titleLarge
+                    ?.copyWith(fontWeight: FontWeight.w700)),
+            const SizedBox(height: 6),
+            Text(
+                hasGps && _incidents.isEmpty
+                    ? 'Menampilkan data contoh dari titik GPS karena belum ada laporan insiden.'
+                    : 'Laporan yang terhubung dengan rute ini.',
+                style: const TextStyle(color: Colors.blueGrey)),
+            const SizedBox(height: 10),
+            if (_isLoading)
+              const Center(
+                  child: Padding(
+                      padding: EdgeInsets.all(24),
+                      child: CircularProgressIndicator()))
+            else if (_incidents.isNotEmpty)
+              ..._incidents.map((incident) => _IncidentCard(
+                  incident: incident,
+                  onTap: () => _mapController.move(
+                      ll.LatLng(incident.latitude, incident.longitude), 16)))
+            else if (hasGps)
+              ..._dummyActivities(route.locations)
+                  .map((activity) => _ActivityCard(activity: activity))
+            else
+              const _EmptyState(),
+          ],
+        ),
+      ),
     );
-
-    if (pickedDate != null && pickedDate != _selectedDate) {
-      setState(() {
-        _selectedDate = pickedDate;
-      });
-    }
   }
 
-  void _resetFilter() {
-    setState(() {
-      _selectedDate = null;
+  List<_RouteActivity> _dummyActivities(List<LocationPoint> points) {
+    final indexes = <int>{0, points.length ~/ 2, points.length - 1}.toList()
+      ..sort();
+    const labels = [
+      'Patroli dimulai',
+      'Pemeriksaan area',
+      'Posisi GPS terakhir'
+    ];
+    const icons = [
+      Icons.play_circle_outline,
+      Icons.fact_check_outlined,
+      Icons.location_on_outlined
+    ];
+    return List.generate(indexes.length, (i) {
+      final point = points[indexes[i]];
+      return _RouteActivity(
+          labels[i],
+          'Titik GPS ${indexes[i] + 1} · ${_coordinate(point)}',
+          point.timestamp,
+          icons[i]);
     });
   }
 
+  double _routeDistance(List<LocationPoint> locations) {
+    if (locations.length < 2) return 0;
+    const distance = ll.Distance();
+    var total = 0.0;
+    for (var i = 1; i < locations.length; i++) {
+      total += distance(
+          ll.LatLng(locations[i - 1].latitude, locations[i - 1].longitude),
+          ll.LatLng(locations[i].latitude, locations[i].longitude));
+    }
+    return total;
+  }
+
+  String _coordinate(LocationPoint point) =>
+      '${point.latitude.toStringAsFixed(5)}, ${point.longitude.toStringAsFixed(5)}';
+  String _formatDistance(double meters) => meters >= 1000
+      ? '${(meters / 1000).toStringAsFixed(2)} km'
+      : '${meters.round()} m';
+  String _formatDuration(Duration value) => value.inHours > 0
+      ? '${value.inHours}j ${value.inMinutes.remainder(60)}m'
+      : '${value.inMinutes} menit';
+  String _formatDateTime(DateTime value) =>
+      '${value.day.toString().padLeft(2, '0')}/${value.month.toString().padLeft(2, '0')}/${value.year} · ${value.hour.toString().padLeft(2, '0')}:${value.minute.toString().padLeft(2, '0')}';
+}
+
+class _RouteHeader extends StatelessWidget {
+  const _RouteHeader({required this.isActive, required this.routeId});
+  final bool isActive;
+  final String routeId;
+  @override
+  Widget build(BuildContext context) => Container(
+        padding: const EdgeInsets.all(18),
+        decoration: BoxDecoration(
+            color: Colors.blueGrey.shade800,
+            borderRadius: BorderRadius.circular(12)),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Row(children: [
+            const Icon(Icons.local_police_outlined, color: Colors.white),
+            const SizedBox(width: 10),
+            Expanded(
+                child: Text('Sesi patroli',
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        color: Colors.white, fontWeight: FontWeight.w700))),
+            _StatusPill(active: isActive),
+          ]),
+          const SizedBox(height: 12),
+          Text(
+              'Rute #${routeId.length > 12 ? routeId.substring(0, 12) : routeId}',
+              style: TextStyle(color: Colors.blueGrey.shade100)),
+        ]),
+      );
+}
+
+class _GpsMap extends StatelessWidget {
+  const _GpsMap(
+      {required this.mapController,
+      required this.locations,
+      required this.incidents});
+  final fm.MapController mapController;
+  final List<LocationPoint> locations;
+  final List<Incident> incidents;
   @override
   Widget build(BuildContext context) {
-    Duration patrolDuration = (widget.patrolRoute.endTime ?? DateTime.now())
-        .difference(widget.patrolRoute.startTime);
-
-    List<Incident> filteredIncidents = _incidents;
-
-    // Apply date filter
-    if (_selectedDate != null) {
-      filteredIncidents = filteredIncidents
-          .where((incident) =>
-              incident.timestamp.toLocal().day == _selectedDate!.day &&
-              incident.timestamp.toLocal().month == _selectedDate!.month &&
-              incident.timestamp.toLocal().year == _selectedDate!.year)
-          .toList();
-    }
-
-    // Apply incident type filter
-    if (_selectedIncidentType != null && _selectedIncidentType != 'All Types') {
-      filteredIncidents = filteredIncidents
-          .where((incident) => incident.type == _selectedIncidentType)
-          .toList();
-    }
-
-    // Apply search filter
-    if (_searchQuery.isNotEmpty) {
-      filteredIncidents = filteredIncidents
-          .where((incident) => (incident.description).contains(_searchQuery))
-          .toList();
-    }
-
-    // Apply sorting logic
-    if (_selectedSortOrder == 'Date (Newest First)') {
-      filteredIncidents.sort((a, b) => b.timestamp.compareTo(a.timestamp));
-    } else if (_selectedSortOrder == 'Date (Oldest First)') {
-      filteredIncidents.sort((a, b) => a.timestamp.compareTo(b.timestamp));
-    }
-
-    return Scaffold(
-      appBar: AppBar(
-        title: Text('Route Details'),
-        backgroundColor: Colors.blueGrey,
-      ),
-      body: SingleChildScrollView(
-        child: Padding(
-          padding: const EdgeInsets.all(12.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: <Widget>[
-              Text(
-                'Details',
-                style: TextStyle(
-                  fontSize: 24,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              SizedBox(height: 10),
-              _buildInfoTile('Start Time',
-                  widget.patrolRoute.startTime.toLocal().toString()),
-              _buildInfoTile(
-                  'End Time', widget.patrolRoute.endTime!.toLocal().toString()),
-              _buildInfoTile('Duration', '${patrolDuration.inMinutes} mins'),
-              SizedBox(height: 20),
-              SizedBox(
-                height: 250,
-                child: fm.FlutterMap(
-                  options: fm.MapOptions(
-                    initialCenter: ll.LatLng(
-                        widget.patrolRoute.locations.first.latitude,
-                        widget.patrolRoute.locations.first.longitude),
-                    initialZoom: 15,
-                  ),
-                  children: [
-                    fm.TileLayer(
-                      urlTemplate:
-                          'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                      userAgentPackageName: 'com.example.police_patrol_app',
-                    ),
-                    fm.PolylineLayer(polylines: _polylines.toList()),
-                    fm.MarkerLayer(markers: _markers.toList()),
-                  ],
-                ),
-              ),
-              SizedBox(height: 20),
-              Text(
-                'Incidents',
-                style: TextStyle(
-                  fontSize: 24,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              SizedBox(height: 10),
-
-              // Incident reports listing goes here
-
-              // Dropdown for incident types
-              DropdownButton<String>(
-                value: _selectedIncidentType ?? 'All Types',
-                onChanged: (newValue) {
-                  setState(() {
-                    _selectedIncidentType = newValue;
-                  });
-                },
-                items: _incidentTypes
-                    .map<DropdownMenuItem<String>>((String value) {
-                  return DropdownMenuItem<String>(
-                    value: value,
-                    child: Text(value),
-                  );
-                }).toList(),
-              ),
-
-              // Listing filtered incidents
-              ListView.builder(
-                shrinkWrap: true,
-                itemCount: filteredIncidents.length,
-                itemBuilder: (context, index) {
-                  Incident incident = filteredIncidents[index];
-                  return Card(
-                    margin: EdgeInsets.symmetric(vertical: 5),
-                    elevation: 5,
-                    child: ListTile(
-                      contentPadding: EdgeInsets.all(10),
-                      leading: CircleAvatar(
-                        backgroundColor: Colors.blueGrey[100],
-                        child: (incident.mediaType == 'image' &&
-                                incident.mediaUrl != null)
-                            ? ClipOval(
-                                child: Image.network(
-                                  incident.mediaUrl ?? 'default_image_url',
-                                  width: 48,
-                                  height: 48,
-                                  fit: BoxFit.cover,
-                                ),
-                              )
-                            : Icon(Icons.warning,
-                                color: Colors.red,
-                                size:
-                                    28), // Fallback to warning icon if not an image
-                      ),
-                      title: Text(
-                        incident.description,
-                        style: TextStyle(fontWeight: FontWeight.bold),
-                      ),
-                      subtitle: Text(
-                        incident.timestamp.toLocal().toString(),
-                        style: TextStyle(fontSize: 12),
-                      ),
-                      trailing: incident.mediaUrl != null
-                          ? GestureDetector(
-                              onTap: () => _viewMedia(incident.mediaUrl!,
-                                  incident.mediaType ?? 'defaultType'),
-                              child: Icon(
-                                Icons.play_circle_fill,
-                                color: Colors.blueGrey,
-                                size: 30,
-                              ),
-                            )
-                          : null,
-                      onTap: () => _zoomToIncident(incident),
-                    ),
-                  );
-                },
-              )
+    if (locations.isEmpty) return const _NoGpsMap();
+    final points =
+        locations.map((p) => ll.LatLng(p.latitude, p.longitude)).toList();
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(12),
+      child: SizedBox(
+          height: 265,
+          child: fm.FlutterMap(
+            mapController: mapController,
+            options:
+                fm.MapOptions(initialCenter: points.first, initialZoom: 15),
+            children: [
+              fm.TileLayer(
+                  urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                  userAgentPackageName: 'com.example.police_patrol_app'),
+              fm.PolylineLayer(polylines: [
+                fm.Polyline(
+                    points: points, color: Colors.blue.shade700, strokeWidth: 4)
+              ]),
+              fm.MarkerLayer(markers: [
+                fm.Marker(
+                    point: points.first,
+                    width: 40,
+                    height: 40,
+                    child: const Icon(Icons.trip_origin,
+                        color: Colors.green, size: 28)),
+                fm.Marker(
+                    point: points.last,
+                    width: 42,
+                    height: 42,
+                    child: const Icon(Icons.flag, color: Colors.red, size: 32)),
+                ...incidents.map((i) => fm.Marker(
+                    point: ll.LatLng(i.latitude, i.longitude),
+                    width: 40,
+                    height: 40,
+                    child: const Icon(Icons.warning_amber_rounded,
+                        color: Colors.orange, size: 31))),
+              ]),
             ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  ListTile _buildInfoTile(String title, String value) {
-    return ListTile(
-      contentPadding: EdgeInsets.zero,
-      title: Text(
-        title,
-        style: TextStyle(
-          fontSize: 16,
-          fontWeight: FontWeight.bold,
-        ),
-      ),
-      subtitle: Text(
-        value,
-        style: TextStyle(fontSize: 15),
-      ),
+          )),
     );
   }
 }
 
-class FullScreenMediaView extends StatefulWidget {
-  final String mediaUrl;
-  final String mediaType;
-
-  FullScreenMediaView({required this.mediaUrl, required this.mediaType});
-
+class _NoGpsMap extends StatelessWidget {
+  const _NoGpsMap();
   @override
-  _FullScreenMediaViewState createState() => _FullScreenMediaViewState();
+  Widget build(BuildContext context) => Container(
+      height: 180,
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+          color: Colors.blueGrey.shade50,
+          borderRadius: BorderRadius.circular(12)),
+      child:
+          const Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+        Icon(Icons.gps_off_outlined, size: 38, color: Colors.blueGrey),
+        SizedBox(height: 8),
+        Text('Rute GPS belum direkam',
+            style: TextStyle(fontWeight: FontWeight.w600)),
+        SizedBox(height: 4),
+        Text(
+            'Peta dan data perjalanan tampil setelah GPS menerima titik lokasi.',
+            textAlign: TextAlign.center,
+            style: TextStyle(color: Colors.blueGrey))
+      ]));
 }
 
-class _FullScreenMediaViewState extends State<FullScreenMediaView> {
-  VideoPlayerController? _controller;
-
+class _MetricCard extends StatelessWidget {
+  const _MetricCard(
+      {required this.icon, required this.label, required this.value});
+  final IconData icon;
+  final String label;
+  final String value;
   @override
-  void initState() {
-    super.initState();
-    if (widget.mediaType == 'video') {
-      _controller = VideoPlayerController.network(widget.mediaUrl)
-        ..initialize().then((_) {
-          setState(() {});
-        });
-    }
-  }
+  Widget build(BuildContext context) => SizedBox(
+      width: (MediaQuery.sizeOf(context).width - 42) / 2,
+      child: Card(
+          margin: EdgeInsets.zero,
+          elevation: 0,
+          color: Colors.white,
+          child: Padding(
+              padding: const EdgeInsets.all(14),
+              child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Icon(icon, color: Colors.blueGrey.shade700),
+                    const SizedBox(height: 12),
+                    Text(value,
+                        style: Theme.of(context)
+                            .textTheme
+                            .titleMedium
+                            ?.copyWith(fontWeight: FontWeight.w700)),
+                    Text(label, style: const TextStyle(color: Colors.blueGrey))
+                  ]))));
+}
 
+class _SectionCard extends StatelessWidget {
+  const _SectionCard(
+      {required this.title, required this.icon, required this.child});
+  final String title;
+  final IconData icon;
+  final Widget child;
   @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text('Media View'),
-      ),
-      body: Center(
-        child: widget.mediaType == 'image'
-            ? Image.network(widget.mediaUrl, fit: BoxFit.cover)
-            : Container(
-                // child: VideoPlayer(_controller!),
+  Widget build(BuildContext context) => Card(
+      margin: EdgeInsets.zero,
+      elevation: 0,
+      child: Padding(
+          padding: const EdgeInsets.all(16),
+          child:
+              Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Row(children: [
+              Icon(icon, color: Colors.blueGrey.shade700),
+              const SizedBox(width: 8),
+              Text(title,
+                  style: Theme.of(context)
+                      .textTheme
+                      .titleMedium
+                      ?.copyWith(fontWeight: FontWeight.w700))
+            ]),
+            const SizedBox(height: 10),
+            child
+          ])));
+}
 
-                child: Text('Video Player Placeholder'),
-              ),
-      ),
-    );
-  }
-
+class _InfoRow extends StatelessWidget {
+  const _InfoRow(this.label, this.value);
+  final String label;
+  final String value;
   @override
-  void dispose() {
-    // _controller?.dispose();
-    super.dispose();
-  }
+  Widget build(BuildContext context) => Padding(
+      padding: const EdgeInsets.symmetric(vertical: 7),
+      child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        SizedBox(
+            width: 116,
+            child: Text(label, style: const TextStyle(color: Colors.blueGrey))),
+        Expanded(
+            child: Text(value,
+                style: const TextStyle(fontWeight: FontWeight.w600)))
+      ]));
+}
+
+class _StatusPill extends StatelessWidget {
+  const _StatusPill({required this.active});
+  final bool active;
+  @override
+  Widget build(BuildContext context) => Container(
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+      decoration: BoxDecoration(
+          color: active ? Colors.green.shade600 : Colors.blueGrey.shade600,
+          borderRadius: BorderRadius.circular(20)),
+      child: Text(active ? 'Aktif' : 'Selesai',
+          style: const TextStyle(
+              color: Colors.white, fontSize: 12, fontWeight: FontWeight.w600)));
+}
+
+class _IncidentCard extends StatelessWidget {
+  const _IncidentCard({required this.incident, required this.onTap});
+  final Incident incident;
+  final VoidCallback onTap;
+  @override
+  Widget build(BuildContext context) => Card(
+      margin: const EdgeInsets.only(bottom: 8),
+      child: ListTile(
+          onTap: onTap,
+          leading: const CircleAvatar(
+              backgroundColor: Color(0xFFFFF3E0),
+              child: Icon(Icons.warning_amber_rounded, color: Colors.orange)),
+          title: Text(incident.description,
+              maxLines: 1, overflow: TextOverflow.ellipsis),
+          subtitle: Text(
+              '${incident.type ?? 'Insiden'} · ${incident.timestamp.toLocal()}'),
+          trailing: const Icon(Icons.chevron_right)));
+}
+
+class _RouteActivity {
+  const _RouteActivity(this.title, this.detail, this.time, this.icon);
+  final String title;
+  final String detail;
+  final DateTime time;
+  final IconData icon;
+}
+
+class _ActivityCard extends StatelessWidget {
+  const _ActivityCard({required this.activity});
+  final _RouteActivity activity;
+  @override
+  Widget build(BuildContext context) => Card(
+      margin: const EdgeInsets.only(bottom: 8),
+      child: ListTile(
+          leading: CircleAvatar(
+              backgroundColor: Colors.blueGrey.shade50,
+              child: Icon(activity.icon, color: Colors.blueGrey.shade700)),
+          title: Text(activity.title),
+          subtitle: Text('${activity.detail}\n${activity.time.toLocal()}'),
+          isThreeLine: true));
+}
+
+class _EmptyState extends StatelessWidget {
+  const _EmptyState();
+  @override
+  Widget build(BuildContext context) => const Padding(
+      padding: EdgeInsets.symmetric(vertical: 28),
+      child: Center(
+          child: Column(children: [
+        Icon(Icons.inbox_outlined, size: 36, color: Colors.blueGrey),
+        SizedBox(height: 8),
+        Text('Belum ada insiden atau titik GPS pada rute ini.',
+            style: TextStyle(color: Colors.blueGrey))
+      ])));
 }

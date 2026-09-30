@@ -24,28 +24,49 @@ class _CheckpointScannerPageState extends State<CheckpointScannerPage> {
   bool _processing = false;
   String? _message;
   bool _success = false;
+  String? _checkpointName;
+  String? _checkpointId;
+  DateTime? _scannedAt;
+  double? _distanceMeters;
+  double? _locationAccuracy;
 
   Future<void> _handleBarcode(BarcodeCapture capture) async {
     if (_processing) return;
     final value = capture.barcodes.firstOrNull?.rawValue?.trim();
     if (value == null || value.isEmpty) return;
+    debugPrint('Checkpoint QR payload code units: ${value.codeUnits}');
 
     setState(() {
       _processing = true;
       _message = 'Memvalidasi checkpoint...';
       _success = false;
+      _checkpointName = null;
+      _checkpointId = null;
+      _scannedAt = null;
+      _distanceMeters = null;
+      _locationAccuracy = null;
     });
     await _scannerController.stop();
 
+    var stage = 'membaca checkpoint';
     try {
+      if (value.contains('/')) {
+        throw StateError(
+          'QR terbaca sebagai "$value". Gunakan ID checkpoint saja, '
+          'contoh: CP-GATE-001.',
+        );
+      }
+
       final checkpoint = await _firebaseService.getCheckpoint(value);
       if (checkpoint == null || !checkpoint.isActive) {
         throw StateError('Checkpoint tidak terdaftar atau tidak aktif.');
       }
 
+      stage = 'memvalidasi sesi login';
       final user = AuthService().currentUser;
       if (user == null) throw StateError('Sesi login sudah berakhir.');
 
+      stage = 'memeriksa izin lokasi';
       final location = Location();
       final serviceEnabled = await location.serviceEnabled();
       if (!serviceEnabled) throw StateError('Aktifkan layanan lokasi.');
@@ -73,11 +94,13 @@ class _CheckpointScannerPageState extends State<CheckpointScannerPage> {
         );
       }
 
+      stage = 'memeriksa scan duplikat';
       if (await _firebaseService.hasCheckpointBeenScanned(
           widget.sessionId, checkpoint.id)) {
         throw StateError('Checkpoint ini sudah discan pada patroli ini.');
       }
 
+      final scannedAt = DateTime.now();
       final scan = PatrolScan(
         id: const Uuid().v4(),
         sessionId: widget.sessionId,
@@ -87,19 +110,25 @@ class _CheckpointScannerPageState extends State<CheckpointScannerPage> {
         longitude: longitude,
         accuracy: locationData.accuracy,
         isWithinRadius: true,
-        scannedAt: DateTime.now(),
+        scannedAt: scannedAt,
       );
+      stage = 'menyimpan hasil scan';
       await _firebaseService.addPatrolScan(scan);
 
       if (!mounted) return;
       setState(() {
         _success = true;
         _message = 'Checkpoint ${checkpoint.name} berhasil dicatat.';
+        _checkpointName = checkpoint.name;
+        _checkpointId = checkpoint.id;
+        _scannedAt = scannedAt;
+        _distanceMeters = distance;
+        _locationAccuracy = locationData.accuracy;
       });
     } catch (error) {
       if (!mounted) return;
-      setState(
-          () => _message = error.toString().replaceFirst('Bad state: ', ''));
+      final errorMessage = error.toString().replaceFirst('Bad state: ', '');
+      setState(() => _message = 'Gagal saat $stage: $errorMessage');
     } finally {
       if (mounted) setState(() => _processing = false);
     }
@@ -117,6 +146,28 @@ class _CheckpointScannerPageState extends State<CheckpointScannerPage> {
     return earthRadius * 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a));
   }
 
+  String _formatScannedAt(BuildContext context) {
+    final scannedAt = _scannedAt;
+    if (scannedAt == null) return '';
+    final localTime = scannedAt.toLocal();
+    final date = MaterialLocalizations.of(context).formatMediumDate(localTime);
+    final time = TimeOfDay.fromDateTime(localTime).format(context);
+    return '$date, $time';
+  }
+
+  void _startNextScan() {
+    setState(() {
+      _message = null;
+      _success = false;
+      _checkpointName = null;
+      _checkpointId = null;
+      _scannedAt = null;
+      _distanceMeters = null;
+      _locationAccuracy = null;
+    });
+    _scannerController.start();
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -129,41 +180,112 @@ class _CheckpointScannerPageState extends State<CheckpointScannerPage> {
           ),
         ],
       ),
-      body: Column(
+      body: Stack(
         children: [
-          Expanded(
+          Positioned.fill(
             child: MobileScanner(
               controller: _scannerController,
               onDetect: _handleBarcode,
             ),
           ),
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              children: [
-                Text(
-                  _message ?? 'Arahkan kamera ke barcode checkpoint.',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    color: _success ? Colors.green : Colors.black87,
-                    fontWeight: FontWeight.w600,
+          Positioned(
+            top: 12,
+            left: 12,
+            right: 12,
+            child: SafeArea(
+              bottom: false,
+              child: Card(
+                color: Colors.black87,
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Icon(
+                            _success
+                                ? Icons.check_circle
+                                : _processing
+                                    ? Icons.hourglass_top
+                                    : _message == null
+                                        ? Icons.qr_code_scanner
+                                        : Icons.error_outline,
+                            color: _success
+                                ? Colors.lightGreenAccent
+                                : Colors.white,
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Text(
+                              _success
+                                  ? 'Checkpoint berhasil dicatat'
+                                  : _processing
+                                      ? 'Memproses scan'
+                                      : 'Scan checkpoint',
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      if (_success) ...[
+                        Text(
+                          _checkpointName ?? 'Checkpoint',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 16,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          'ID: ${_checkpointId ?? '-'}',
+                          style: const TextStyle(color: Colors.white70),
+                        ),
+                        Text(
+                          'Waktu: ${_formatScannedAt(context)}',
+                          style: const TextStyle(color: Colors.white70),
+                        ),
+                        Text(
+                          'Jarak: ${_distanceMeters?.round() ?? '-'} m'
+                          '${_locationAccuracy == null ? '' : ' · Akurasi GPS ±${_locationAccuracy!.round()} m'}',
+                          style: const TextStyle(color: Colors.white70),
+                        ),
+                      ] else
+                        Text(
+                          _message ??
+                              'Arahkan kamera ke QR checkpoint yang terdaftar.',
+                          style: const TextStyle(color: Colors.white),
+                        ),
+                      if (_processing) ...[
+                        const SizedBox(height: 12),
+                        const LinearProgressIndicator(),
+                      ],
+                      if (!_processing && (_success || _message != null))
+                        Align(
+                          alignment: Alignment.centerRight,
+                          child: TextButton.icon(
+                            onPressed: _startNextScan,
+                            icon: Icon(
+                              _success ? Icons.qr_code_scanner : Icons.refresh,
+                            ),
+                            label: Text(
+                              _success ? 'Scan berikutnya' : 'Coba lagi',
+                            ),
+                            style: TextButton.styleFrom(
+                              foregroundColor: Colors.white,
+                            ),
+                          ),
+                        ),
+                    ],
                   ),
                 ),
-                const SizedBox(height: 12),
-                if (_processing) const LinearProgressIndicator(),
-                if (_success)
-                  TextButton.icon(
-                    onPressed: () {
-                      setState(() {
-                        _success = false;
-                        _message = null;
-                      });
-                      _scannerController.start();
-                    },
-                    icon: const Icon(Icons.qr_code_scanner),
-                    label: const Text('Scan checkpoint berikutnya'),
-                  ),
-              ],
+              ),
             ),
           ),
         ],

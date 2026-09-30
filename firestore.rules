@@ -10,6 +10,41 @@ service cloud.firestore {
       return signedIn() && request.auth.uid == userId;
     }
 
+    function isCommandCenter() {
+      return signedIn()
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 1;
+    }
+
+    match /users/{userId} {
+      allow read: if signedIn();
+      allow create: if isOwner(userId)
+        && request.resource.data.id == request.auth.uid
+        && request.resource.data.email == request.auth.token.email
+        && request.resource.data.role is int
+        && request.resource.data.role >= 0 && request.resource.data.role <= 2
+        && get(/databases/$(database)/documents/PreApprovedUsers/$(request.auth.token.email)).data.isApproved == true
+        && request.resource.data.role == get(/databases/$(database)/documents/PreApprovedUsers/$(request.auth.token.email)).data.role;
+      allow update: if isOwner(userId) || isCommandCenter();
+    }
+
+    match /PreApprovedUsers/{email} {
+      allow get: if true;
+      allow create: if request.resource.data.email == email
+        && request.resource.data.isApproved == false
+        && request.resource.data.role is int
+        && request.resource.data.role >= 0 && request.resource.data.role <= 2;
+      allow update, delete: if isCommandCenter();
+    }
+
+    match /incidents/{incidentId} {
+      allow read, create, update: if signedIn();
+    }
+
+    match /contactCenters/{contactId} {
+      allow read: if signedIn();
+      allow write: if isCommandCenter();
+    }
+
     match /checkpoints/{checkpointId} {
       allow read: if signedIn();
       allow write: if signedIn();

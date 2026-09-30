@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:police_patrol_app/services/auth_service.dart';
-import 'package:police_patrol_app/utils/constants.dart';
-import 'package:police_patrol_app/widgets/custom_button.dart';
 
 class DashboardPage extends StatefulWidget {
   @override
@@ -15,54 +13,79 @@ class _DashboardPageState extends State<DashboardPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Dashboard'),
+        title: const Text('Patrol dashboard'),
         actions: [
           IconButton(
-            icon: Icon(Icons.logout),
+            tooltip: 'Keluar',
+            icon: const Icon(Icons.logout),
             onPressed: () async {
               await _authService.signOut();
+              if (!context.mounted) return;
               Navigator.popAndPushNamed(context, '/login');
             },
           )
         ],
       ),
-      body: Container(
-        decoration: BoxDecoration(
-          image: DecorationImage(
-            image: AssetImage(
-                'images/background.jpg'), 
-            fit: BoxFit.cover,
-          ),
-        ),
-        child: Padding(
-          padding: EdgeInsets.all(DEFAULT_PADDING),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Text('Welcome to the Police Patrol Dashboard!',
-                  style: TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white)),
-              SizedBox(height: 20),
-              _buildDashboardCard(
-                title: 'View Incidents',
-                imageAsset: 'images/map.png',
-                onTap: () => Navigator.pushNamed(context, '/map'),
+      body: SingleChildScrollView(
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 720),
+            child: Padding(
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Text(
+                    'OPERASI PATROLI',
+                    style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                          color: Colors.blueGrey,
+                          fontWeight: FontWeight.w700,
+                        ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Selamat bertugas',
+                    style: Theme.of(context)
+                        .textTheme
+                        .headlineSmall
+                        ?.copyWith(fontWeight: FontWeight.w700),
+                  ),
+                  const SizedBox(height: 6),
+                  const Text(
+                    'Pilih aktivitas yang ingin Anda lanjutkan.',
+                    style: TextStyle(color: Colors.blueGrey),
+                  ),
+                  const SizedBox(height: 24),
+                  _buildDashboardCard(
+                    title: 'Peta patroli',
+                    subtitle: 'Lihat rute dan checkpoint',
+                    imageAsset: 'images/map.png',
+                    onTap: () => Navigator.pushNamed(context, '/map'),
+                  ),
+                  _buildDashboardCard(
+                    title: 'Contact Center',
+                    subtitle: 'Telepon atau WhatsApp kontak penting',
+                    imageAsset: 'images/chat.png',
+                    onTap: () => Navigator.pushNamed(context, '/chat'),
+                  ),
+                  _buildDashboardCard(
+                    title: 'Laporan patroli',
+                    subtitle: 'Lihat rute, insiden, dan scan checkpoint',
+                    imageAsset: 'images/report.png',
+                    onTap: () => Navigator.pushNamed(context, '/reportView'),
+                  ),
+                  const SizedBox(height: 8),
+                  OutlinedButton.icon(
+                    onPressed: () => Navigator.pushNamed(context, '/report'),
+                    icon: const Icon(Icons.add_alert_outlined),
+                    label: const Text('Buat laporan insiden'),
+                    style: OutlinedButton.styleFrom(
+                      minimumSize: const Size.fromHeight(48),
+                    ),
+                  ),
+                ],
               ),
-              SizedBox(height: 10),
-              _buildDashboardCard(
-                title: 'Chat with Team',
-                imageAsset: 'images/chat.png',
-                onTap: () => Navigator.pushNamed(context, '/chat'),
-              ),
-              SizedBox(height: 10),
-              _buildDashboardCard(
-                title: 'Report View',
-                imageAsset: 'images/report.png',
-                onTap: () => Navigator.pushNamed(context, '/reportView'),
-              ),
-            ],
+            ),
           ),
         ),
       ),
@@ -71,57 +94,50 @@ class _DashboardPageState extends State<DashboardPage> {
 
   Widget _buildDashboardCard({
     required String title,
+    required String subtitle,
     required String imageAsset,
     required VoidCallback onTap,
   }) {
-    return Expanded(
-      child: Card(
-        child: InkWell(
-          onTap: onTap,
-          child: Stack(
-            fit: StackFit.expand,
-            children: [
-              ColorFiltered(
-                colorFilter: ColorFilter.mode(
-                  Colors.white.withOpacity(
-                      0.6), // Attractive blue with some transparency
-                  BlendMode
-                      .srcOver, // This blend mode overlays the blue color on the image
-                ),
-                child: Image.asset(
-                  imageAsset,
-                  fit: BoxFit.cover,
-                ),
+    return Card(
+      margin: const EdgeInsets.only(bottom: 12),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onTap,
+        child: Row(
+          children: [
+            SizedBox(
+              width: 96,
+              height: 88,
+              child: Image.asset(
+                imageAsset,
+                fit: BoxFit.cover,
               ),
-              Align(
-                alignment: Alignment.bottomLeft,
-                child: Padding(
-                  padding: const EdgeInsets.all(8.0),
-                  child: Text(
-                    title,
-                    style: TextStyle(
-                      color: Colors.black,
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      shadows: [
-                        BoxShadow(
-                          color: Colors.white.withOpacity(0.9),
-                          blurRadius:
-                              10.0, 
-                          spreadRadius:
-                              5.0, 
-                          offset: Offset(
-                            0.0, 
-                            0.0, 
-                          ),
-                        )
-                      ],
+            ),
+            Expanded(
+              child: Padding(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: const TextStyle(fontWeight: FontWeight.w700),
                     ),
-                  ),
+                    const SizedBox(height: 4),
+                    Text(
+                      subtitle,
+                      style: const TextStyle(color: Colors.blueGrey),
+                    ),
+                  ],
                 ),
               ),
-            ],
-          ),
+            ),
+            const Padding(
+              padding: EdgeInsets.only(right: 16),
+              child: Icon(Icons.chevron_right, color: Colors.blueGrey),
+            ),
+          ],
         ),
       ),
     );

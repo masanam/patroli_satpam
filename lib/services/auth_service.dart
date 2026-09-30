@@ -26,23 +26,18 @@ class AuthService {
   // Register with email and password
   Future<auth.User?> registerWithEmailAndPassword(
       String email, String password, UserRole role) async {
-    try {
-      auth.UserCredential userCredential =
-          await _auth.createUserWithEmailAndPassword(
-        email: email,
-        password: password,
-      );
-
-      // Save the role in Firestore
-      await _db.collection('users').doc(userCredential.user!.uid).set({
-        'role': role.index,
-      });
-
-      return userCredential.user;
-    } catch (e) {
-      print(e.toString());
-      return null;
-    }
+    final userCredential = await _auth.createUserWithEmailAndPassword(
+      email: email.trim().toLowerCase(),
+      password: password,
+    );
+    final user = userCredential.user;
+    if (user == null) throw StateError('Firebase tidak membuat pengguna.');
+    await _db.collection('users').doc(user.uid).set({
+      'id': user.uid,
+      'email': user.email ?? email.trim().toLowerCase(),
+      'role': role.index,
+    });
+    return user;
   }
 
   // Sign out

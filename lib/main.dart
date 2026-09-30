@@ -22,8 +22,10 @@ void main() async {
     await Firebase.initializeApp(
       options: DefaultFirebaseOptions.currentPlatform,
     );
-  } catch (error) {
+  } catch (error, stackTrace) {
     firebaseError = error;
+    debugPrint('Firebase.initializeApp failed: $error');
+    debugPrintStack(stackTrace: stackTrace);
   }
   runApp(PolicePatrolApp(firebaseError: firebaseError));
 }
@@ -55,8 +57,77 @@ class PolicePatrolApp extends StatelessWidget {
     return GetMaterialApp(
       title: 'Police Patrol App',
       theme: ThemeData(
-        primarySwatch: Colors.blue,
+        useMaterial3: true,
         visualDensity: VisualDensity.adaptivePlatformDensity,
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: const Color(0xFF163B56),
+          primary: const Color(0xFF163B56),
+          secondary: const Color(0xFF2B7A9A),
+          surface: Colors.white,
+          brightness: Brightness.light,
+        ),
+        scaffoldBackgroundColor: const Color(0xFFF5F7FA),
+        appBarTheme: const AppBarTheme(
+          centerTitle: false,
+          elevation: 0,
+          backgroundColor: Color(0xFFF5F7FA),
+          foregroundColor: Color(0xFF172B3A),
+          titleTextStyle: TextStyle(
+            color: Color(0xFF172B3A),
+            fontSize: 20,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+        cardTheme: CardThemeData(
+          color: Colors.white,
+          elevation: 0,
+          margin: EdgeInsets.zero,
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        ),
+        inputDecorationTheme: InputDecorationTheme(
+          filled: true,
+          fillColor: const Color(0xFFF8FAFC),
+          contentPadding:
+              const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+          border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(color: Color(0xFFD7E0E8))),
+          enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(color: Color(0xFFD7E0E8))),
+          focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(color: Color(0xFF2B7A9A), width: 2)),
+          labelStyle: const TextStyle(color: Color(0xFF526879)),
+        ),
+        elevatedButtonTheme: ElevatedButtonThemeData(
+            style: ElevatedButton.styleFrom(
+          minimumSize: const Size.fromHeight(50),
+          elevation: 0,
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          textStyle: const TextStyle(fontWeight: FontWeight.w700),
+        )),
+        filledButtonTheme: FilledButtonThemeData(
+            style: FilledButton.styleFrom(
+          minimumSize: const Size.fromHeight(50),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          textStyle: const TextStyle(fontWeight: FontWeight.w700),
+        )),
+        textTheme: const TextTheme(
+          headlineSmall: TextStyle(
+              fontSize: 28,
+              fontWeight: FontWeight.w700,
+              color: Color(0xFF172B3A)),
+          titleLarge: TextStyle(
+              fontSize: 21,
+              fontWeight: FontWeight.w700,
+              color: Color(0xFF172B3A)),
+          bodyLarge: TextStyle(fontSize: 16, color: Color(0xFF34495A)),
+          bodyMedium: TextStyle(fontSize: 14, color: Color(0xFF526879)),
+        ),
       ),
       initialRoute: '/login',
       routes: {
