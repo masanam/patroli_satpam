@@ -1,0 +1,427 @@
+{
+  "contactCenters": {
+    "CC-001": {
+      "id": "CC-001",
+      "name": "Komandan Regu Patroli",
+      "whatsappNumber": "6281234567890",
+      "phoneNumber": "021-5551001",
+      "position": "Komandan Regu",
+      "unit": "Unit Patroli Alpha",
+      "category": 1,
+      "isActive": true,
+      "description": "Komandan utama regu patroli. Hubungi untuk koordinasi jadwal dan penugasan."
+    },
+    "CC-002": {
+      "id": "CC-002",
+      "name": "Pusat Komando (Posko)",
+      "whatsappNumber": "6281298765432",
+      "phoneNumber": "021-5551002",
+      "position": "Operator Posko",
+      "unit": "Pusat Komando",
+      "category": 1,
+      "isActive": true,
+      "description": "Pusat koordinasi operasional 24 jam. Laporkan situasi lapangan ke sini."
+    },
+    "CC-003": {
+      "id": "CC-003",
+      "name": "Hotline Darurat Polisi",
+      "whatsappNumber": "621110",
+      "phoneNumber": "110",
+      "position": "Layanan Darurat",
+      "unit": "Kepolisian RI",
+      "category": 0,
+      "isActive": true,
+      "description": "Layanan darurat kepolisian 24 jam. Hubungi segera dalam kondisi darurat."
+    },
+    "CC-004": {
+      "id": "CC-004",
+      "name": "Unit Gawat Darurat (UGD)",
+      "whatsappNumber": "621119",
+      "phoneNumber": "119",
+      "position": "Ambulans & Medis",
+      "unit": "Dinas Kesehatan",
+      "category": 0,
+      "isActive": true,
+      "description": "Layanan ambulans dan pertolongan pertama medis."
+    },
+    "CC-005": {
+      "id": "CC-005",
+      "name": "Pemadam Kebakaran",
+      "whatsappNumber": "621113",
+      "phoneNumber": "113",
+      "position": "Damkar",
+      "unit": "Dinas Pemadam Kebakaran",
+      "category": 0,
+      "isActive": true,
+      "description": "Layanan pemadam kebakaran dan penyelamatan."
+    },
+    "CC-006": {
+      "id": "CC-006",
+      "name": "Petugas Bpk. Andi Susanto",
+      "whatsappNumber": "6285678901234",
+      "phoneNumber": "021-5551006",
+      "position": "Anggota Patroli",
+      "unit": "Unit Patroli Alpha",
+      "category": 1,
+      "isActive": true,
+      "description": "Anggota regu patroli Alpha - shift pagi."
+    },
+    "CC-007": {
+      "id": "CC-007",
+      "name": "Petugas Bpk. Dedi Kurniawan",
+      "whatsappNumber": "6287812345678",
+      "phoneNumber": "021-5551007",
+      "position": "Anggota Patroli",
+      "unit": "Unit Patroli Bravo",
+      "category": 1,
+      "isActive": true,
+      "description": "Anggota regu patroli Bravo - shift malam."
+    },
+    "CC-008": {
+      "id": "CC-008",
+      "name": "Admin Laporan dan Dokumentasi",
+      "whatsappNumber": "6281122334455",
+      "phoneNumber": "021-5551008",
+      "position": "Staf Administrasi",
+      "unit": "Sekretariat",
+      "category": 3,
+      "isActive": true,
+      "description": "Pengiriman laporan resmi, berita acara, dan dokumen administrasi."
+    },
+    "CC-009": {
+      "id": "CC-009",
+      "name": "Meja Pengaduan Masyarakat",
+      "whatsappNumber": "6281345678901",
+      "phoneNumber": "021-5551009",
+      "position": "Petugas Pengaduan",
+      "unit": "Humas",
+      "category": 2,
+      "isActive": true,
+      "description": "Terima laporan insiden dari masyarakat dan tindak lanjut pengaduan."
+    },
+    "CC-010": {
+      "id": "CC-010",
+      "name": "Supervisor Shift Malam",
+      "whatsappNumber": "6289987654321",
+      "phoneNumber": "021-5551010",
+      "position": "Supervisor",
+      "unit": "Unit Patroli Bravo",
+      "category": 1,
+      "isActive": true,
+      "description": "Penanggung jawab operasional shift malam (20.00-06.00)."
+    }
+  },
+  "checkpoints": {
+    "CP-GATE-001": {
+      "name": "Gerbang Utama",
+      "siteId": "site-001",
+      "latitude": -6.2001,
+      "longitude": 106.8167,
+      "radiusMeters": 50,
+      "sequence": 1,
+      "isActive": true
+    },
+    "CP-LOBBY-002": {
+      "name": "Lobi Gedung A",
+      "siteId": "site-001",
+      "latitude": -6.2010,
+      "longitude": 106.8175,
+      "radiusMeters": 30,
+      "sequence": 2,
+      "isActive": true
+    },
+    "CP-PARK-003": {
+      "name": "Area Parkir Barat",
+      "siteId": "site-001",
+      "latitude": -6.1995,
+      "longitude": 106.8160,
+      "radiusMeters": 80,
+      "sequence": 3,
+      "isActive": true
+    },
+    "CP-ROOF-004": {
+      "name": "Atap / Rooftop",
+      "siteId": "site-001",
+      "latitude": -6.2005,
+      "longitude": 106.8170,
+      "radiusMeters": 40,
+      "sequence": 4,
+      "isActive": true
+    },
+    "CP-BACK-005": {
+      "name": "Pintu Belakang",
+      "siteId": "site-001",
+      "latitude": -6.2015,
+      "longitude": 106.8165,
+      "radiusMeters": 50,
+      "sequence": 5,
+      "isActive": true
+    }
+  },
+  "officers": {
+    "OFF-001": {
+      "id": "OFF-001",
+      "name": "Bpk. Andi Susanto",
+      "rank": "Brigadir",
+      "patrolUnit": "Unit Patroli Alpha",
+      "status": "On Duty"
+    },
+    "OFF-002": {
+      "id": "OFF-002",
+      "name": "Bpk. Dedi Kurniawan",
+      "rank": "Ipda",
+      "patrolUnit": "Unit Patroli Bravo",
+      "status": "On Duty"
+    },
+    "OFF-003": {
+      "id": "OFF-003",
+      "name": "Bpk. Rudi Hartono",
+      "rank": "Briptu",
+      "patrolUnit": "Unit Patroli Alpha",
+      "status": "Off Duty"
+    },
+    "OFF-004": {
+      "id": "OFF-004",
+      "name": "Ibu Sari Dewi",
+      "rank": "Bripda",
+      "patrolUnit": "Unit Patroli Charlie",
+      "status": "On Duty"
+    }
+  },
+  "resources": {
+    "RES-001": {
+      "id": "RES-001",
+      "name": "Mobil Patroli Alpha-1",
+      "type": "Kendaraan",
+      "status": "Tersedia"
+    },
+    "RES-002": {
+      "id": "RES-002",
+      "name": "Mobil Patroli Bravo-1",
+      "type": "Kendaraan",
+      "status": "Sedang Digunakan"
+    },
+    "RES-003": {
+      "id": "RES-003",
+      "name": "Radio HT Set Alpha",
+      "type": "Peralatan Komunikasi",
+      "status": "Tersedia"
+    },
+    "RES-004": {
+      "id": "RES-004",
+      "name": "CCTV Mobile Unit",
+      "type": "Peralatan Pemantauan",
+      "status": "Dalam Perbaikan"
+    },
+    "RES-005": {
+      "id": "RES-005",
+      "name": "Senter Taktis",
+      "type": "Peralatan Lapangan",
+      "status": "Tersedia"
+    }
+  },
+  "incidents": {
+    "INC-001": {
+      "id": "INC-001",
+      "latitude": -6.2003,
+      "longitude": 106.8169,
+      "description": "Ditemukan kendaraan parkir tanpa izin di area terlarang dekat Gerbang Utama.",
+      "timestamp": 1748649600000,
+      "reportedBy": "OFF-001",
+      "type": "Pelanggaran Parkir",
+      "mediaUrl": null,
+      "mediaType": null,
+      "patrolRouteId": "ROUTE-001",
+      "status": 0
+    },
+    "INC-002": {
+      "id": "INC-002",
+      "latitude": -6.2012,
+      "longitude": 106.8178,
+      "description": "Lampu penerangan area parkir barat mati, perlu dilaporkan ke bagian teknik.",
+      "timestamp": 1748653200000,
+      "reportedBy": "OFF-002",
+      "type": "Kerusakan Fasilitas",
+      "mediaUrl": null,
+      "mediaType": null,
+      "patrolRouteId": "ROUTE-002",
+      "status": 1
+    },
+    "INC-003": {
+      "id": "INC-003",
+      "latitude": -6.1998,
+      "longitude": 106.8163,
+      "description": "Orang tidak dikenal terlihat mencurigakan di area belakang gedung. Sudah diidentifikasi sebagai pedagang keliling.",
+      "timestamp": 1748656800000,
+      "reportedBy": "OFF-001",
+      "type": "Aktivitas Mencurigakan",
+      "mediaUrl": null,
+      "mediaType": null,
+      "patrolRouteId": "ROUTE-001",
+      "status": 1
+    },
+    "INC-004": {
+      "id": "INC-004",
+      "latitude": -6.2008,
+      "longitude": 106.8172,
+      "description": "Pintu darurat lantai 2 terkunci dari dalam. Sedang dalam penanganan oleh teknisi.",
+      "timestamp": 1748660400000,
+      "reportedBy": "OFF-004",
+      "type": "Kerusakan Fasilitas",
+      "mediaUrl": null,
+      "mediaType": null,
+      "patrolRouteId": "ROUTE-003",
+      "status": 2
+    }
+  },
+  "patrolRoutes": {
+    "ROUTE-001": {
+      "id": "ROUTE-001",
+      "officerId": "OFF-001",
+      "startTime": 1748646000000,
+      "endTime": 1748657400000,
+      "locations": [
+        {
+          "latitude": -6.2001,
+          "longitude": 106.8167,
+          "timestamp": 1748646000000
+        },
+        {
+          "latitude": -6.2005,
+          "longitude": 106.8170,
+          "timestamp": 1748647800000
+        },
+        {
+          "latitude": -6.2010,
+          "longitude": 106.8175,
+          "timestamp": 1748649600000
+        },
+        {
+          "latitude": -6.2015,
+          "longitude": 106.8165,
+          "timestamp": 1748651400000
+        },
+        {
+          "latitude": -6.1995,
+          "longitude": 106.8160,
+          "timestamp": 1748653200000
+        },
+        {
+          "latitude": -6.2001,
+          "longitude": 106.8167,
+          "timestamp": 1748657400000
+        }
+      ],
+      "incidents": null,
+      "sessionType": "patrol"
+    },
+    "ROUTE-002": {
+      "id": "ROUTE-002",
+      "officerId": "OFF-002",
+      "startTime": 1748700000000,
+      "endTime": 1748711400000,
+      "locations": [
+        {
+          "latitude": -6.2001,
+          "longitude": 106.8167,
+          "timestamp": 1748700000000
+        },
+        {
+          "latitude": -6.2003,
+          "longitude": 106.8169,
+          "timestamp": 1748701800000
+        },
+        {
+          "latitude": -6.2008,
+          "longitude": 106.8172,
+          "timestamp": 1748703600000
+        },
+        {
+          "latitude": -6.2001,
+          "longitude": 106.8167,
+          "timestamp": 1748711400000
+        }
+      ],
+      "incidents": null,
+      "sessionType": "patrol"
+    },
+    "ROUTE-003": {
+      "id": "ROUTE-003",
+      "officerId": "OFF-004",
+      "startTime": 1748743200000,
+      "endTime": null,
+      "locations": [
+        {
+          "latitude": -6.2001,
+          "longitude": 106.8167,
+          "timestamp": 1748743200000
+        },
+        {
+          "latitude": -6.2008,
+          "longitude": 106.8172,
+          "timestamp": 1748745000000
+        }
+      ],
+      "incidents": null,
+      "sessionType": "patrol"
+    }
+  },
+  "patrolReports": {
+    "RPT-001": {
+      "id": "RPT-001",
+      "officerId": "OFF-001",
+      "warrantDateTime": "2025-05-31T08:00:00.000",
+      "typeOfPatrol": "Patroli Rutin",
+      "natureOfPatrol": "Preventif",
+      "isFootPatrol": false,
+      "numberOfPersonnel": 2,
+      "patrolRouteId": "ROUTE-001"
+    },
+    "RPT-002": {
+      "id": "RPT-002",
+      "officerId": "OFF-002",
+      "warrantDateTime": "2025-05-31T20:00:00.000",
+      "typeOfPatrol": "Patroli Malam",
+      "natureOfPatrol": "Preventif",
+      "isFootPatrol": false,
+      "numberOfPersonnel": 2,
+      "patrolRouteId": "ROUTE-002"
+    },
+    "RPT-003": {
+      "id": "RPT-003",
+      "officerId": "OFF-004",
+      "warrantDateTime": "2025-06-01T08:00:00.000",
+      "typeOfPatrol": "Patroli Rutin",
+      "natureOfPatrol": "Responsif",
+      "isFootPatrol": true,
+      "numberOfPersonnel": 1,
+      "patrolRouteId": "ROUTE-003"
+    }
+  },
+  "PreApprovedUsers": {
+    "petugas1@gmail.com": {
+      "email": "petugas1@gmail.com",
+      "isApproved": true,
+      "role": 0,
+      "requestedAt": null
+    },
+    "petugas2@gmail.com": {
+      "email": "petugas2@gmail.com",
+      "isApproved": true,
+      "role": 0,
+      "requestedAt": null
+    },
+    "komandan@gmail.com": {
+      "email": "komandan@gmail.com",
+      "isApproved": true,
+      "role": 1,
+      "requestedAt": null
+    },
+    "admin@gmail.com": {
+      "email": "admin@gmail.com",
+      "isApproved": false,
+      "role": 0,
+      "requestedAt": null
+    }
+  }
+}

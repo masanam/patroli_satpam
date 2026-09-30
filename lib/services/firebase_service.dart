@@ -8,6 +8,7 @@ import 'package:police_patrol_app/models/officer.dart';
 import 'package:police_patrol_app/models/patrol_report.dart';
 import 'package:police_patrol_app/models/checkpoint.dart';
 import 'package:police_patrol_app/models/patrol_scan.dart';
+import 'package:police_patrol_app/models/contact_center.dart';
 import 'package:uuid/uuid.dart';
 
 class FirebaseService {
@@ -29,6 +30,8 @@ class FirebaseService {
       FirebaseFirestore.instance.collection('checkpoints');
   final CollectionReference _patrolReportCollection =
       FirebaseFirestore.instance.collection('patrolReports');
+  final CollectionReference _contactCentersCollection =
+      FirebaseFirestore.instance.collection('contactCenters');
 
   Future<void> addPreApprovalRequest(
       String email, UserRole selectedRole) async {
@@ -468,6 +471,88 @@ class FirebaseService {
     } catch (e) {
       print(e.toString());
       return null;
+    }
+  }
+
+  // ─── Contact Center ───────────────────────────────────────────────────────
+
+  /// Mengambil semua kontak contact center dari Firestore (sekali ambil)
+  Future<List<ContactCenter>> getContactCenters() async {
+    try {
+      final snapshot = await _contactCentersCollection
+          .where('isActive', isEqualTo: true)
+          .get();
+      return snapshot.docs.map((doc) {
+        final data = doc.data() as Map<String, dynamic>;
+        return ContactCenter.fromJson({...data, 'id': doc.id});
+      }).toList();
+    } catch (e) {
+      print('getContactCenters error: $e');
+      return [];
+    }
+  }
+
+  /// Stream realtime daftar contact center (aktif)
+  Stream<List<ContactCenter>> streamContactCenters() {
+    return _contactCentersCollection
+        .where('isActive', isEqualTo: true)
+        .snapshots()
+        .map((snapshot) => snapshot.docs.map((doc) {
+              final data = doc.data() as Map<String, dynamic>;
+              return ContactCenter.fromJson({...data, 'id': doc.id});
+            }).toList());
+  }
+
+  /// Mengambil contact center berdasarkan kategori
+  Future<List<ContactCenter>> getContactCentersByCategory(
+      ContactCategory category) async {
+    try {
+      final snapshot = await _contactCentersCollection
+          .where('isActive', isEqualTo: true)
+          .where('category', isEqualTo: category.index)
+          .get();
+      return snapshot.docs.map((doc) {
+        final data = doc.data() as Map<String, dynamic>;
+        return ContactCenter.fromJson({...data, 'id': doc.id});
+      }).toList();
+    } catch (e) {
+      print('getContactCentersByCategory error: $e');
+      return [];
+    }
+  }
+
+  /// Menambahkan contact center baru ke Firestore
+  Future<String> addContactCenter(ContactCenter contact) async {
+    try {
+      final id = contact.id.isNotEmpty ? contact.id : const Uuid().v4();
+      final data = contact.copyWith(id: id).toJson();
+      await _contactCentersCollection.doc(id).set(data);
+      return id;
+    } catch (e) {
+      print('addContactCenter error: $e');
+      rethrow;
+    }
+  }
+
+  /// Memperbarui data contact center yang sudah ada
+  Future<void> updateContactCenter(ContactCenter contact) async {
+    try {
+      await _contactCentersCollection
+          .doc(contact.id)
+          .update(contact.toJson());
+    } catch (e) {
+      print('updateContactCenter error: $e');
+      rethrow;
+    }
+  }
+
+  /// Menonaktifkan (soft-delete) contact center
+  Future<void> deleteContactCenter(String id) async {
+    try {
+      await _contactCentersCollection.doc(id).update({'isActive': false});
+    } catch (e) {
+      print('deleteContactCenter error: $e');
+      rethrow;
     }
   }
 }

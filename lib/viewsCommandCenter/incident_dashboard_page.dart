@@ -10,92 +10,110 @@ class IncidentDashboardPage extends StatefulWidget {
 
 class _IncidentDashboardPageState extends State<IncidentDashboardPage> {
   final FirebaseFirestore _db = FirebaseFirestore.instance;
-  IncidentStatus? selectedStatus = null; 
-  List<IncidentStatus> statuses = IncidentStatus.values;
+  IncidentStatus? selectedStatus = null;
   List<String> statusOptions = ["All"] +
       IncidentStatus.values.map((e) => e.toString().split('.').last).toList();
 
   @override
   Widget build(BuildContext context) {
-    print(
-        "Type of selectedStatus: ${selectedStatus.runtimeType}"); 
     return Scaffold(
       appBar: AppBar(
         title: Text('Incident Dashboard'),
-        actions: [
-          IconButton(
-            icon: Icon(Icons.refresh),
-            onPressed: () {
-              setState(() {}); // Trigger a rebuild to refresh the list
-            },
-          ),
-        ],
+        elevation: 0,
       ),
       body: Column(
         children: [
-          Padding(
-              padding: const EdgeInsets.all(8.0),
-              child: DropdownButton<String>(
-                value: selectedStatus?.toString().split('.').last ?? "All",
-                items: statusOptions.map((String value) {
-                  return DropdownMenuItem<String>(
-                    value: value,
-                    child: Text(value),
-                  );
-                }).toList(),
-                onChanged: (newValue) {
-                  setState(() {
-                    if (newValue == "All") {
-                      selectedStatus = null;
-                    } else {
-                      selectedStatus = IncidentStatus.values.firstWhere(
-                          (e) => e.toString().split('.').last == newValue);
-                    }
-                  });
-                },
-              )),
+          Container(
+            padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            color: Theme.of(context).appBarTheme.backgroundColor,
+            child: Row(
+              children: [
+                Text(
+                  "Filter Status: ",
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                ),
+                SizedBox(width: 12),
+                Expanded(
+                  child: Container(
+                    padding: EdgeInsets.symmetric(horizontal: 12),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Colors.grey.shade300),
+                    ),
+                    child: DropdownButtonHideUnderline(
+                      child: DropdownButton<String>(
+                        isExpanded: true,
+                        value: selectedStatus?.toString().split('.').last ?? "All",
+                        items: statusOptions.map((String value) {
+                          return DropdownMenuItem<String>(
+                            value: value,
+                            child: Text(value),
+                          );
+                        }).toList(),
+                        onChanged: (newValue) {
+                          setState(() {
+                            if (newValue == "All") {
+                              selectedStatus = null;
+                            } else {
+                              selectedStatus = IncidentStatus.values.firstWhere(
+                                  (e) => e.toString().split('.').last == newValue);
+                            }
+                          });
+                        },
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
           Expanded(
             child: StreamBuilder(
-              stream: selectedStatus == null
-                  ? _db
-                      .collection('incidents')
-                      .orderBy('timestamp', descending: true)
-                      .snapshots()
-                  : _db
-                      .collection('incidents')
-                      .where('status', isEqualTo: selectedStatus?.index)
-                      .orderBy('timestamp', descending: true)
-                      .snapshots(),
-              builder: (BuildContext context,
-                  AsyncSnapshot<QuerySnapshot> snapshot) {
-                if (snapshot.hasData) {
-                  print(
-                      "Snapshot data: ${snapshot.data!.docs.map((doc) => doc.data())}");
-                }
+              // Query tetap mengambil semua, lalu filter dilakukan di memori (Dart). 
+              // Ini menghindari error 'The query requires an index' ketika filter & order digabung tanpa composite index.
+              stream: _db
+                  .collection('incidents')
+                  .orderBy('timestamp', descending: true)
+                  .snapshots(),
+              builder: (BuildContext context, AsyncSnapshot<QuerySnapshot> snapshot) {
                 if (snapshot.hasError) {
                   return Center(child: Text('Error: ${snapshot.error}'));
                 }
                 if (snapshot.connectionState == ConnectionState.waiting) {
                   return Center(child: CircularProgressIndicator());
                 }
-                return ListView(
-                  children:
-                      snapshot.data!.docs.map((DocumentSnapshot document) {
+
+                // Filter secara lokal berdasarkan selectedStatus
+                var docs = snapshot.data!.docs;
+                if (selectedStatus != null) {
+                  docs = docs.where((doc) {
+                    final data = doc.data() as Map<String, dynamic>;
+                    return data['status'] == selectedStatus!.index;
+                  }).toList();
+                }
+
+                if (docs.isEmpty) {
+                  return Center(
+                    child: Text('Tidak ada insiden.',
+                        style: TextStyle(fontSize: 16, color: Colors.grey)),
+                  );
+                }
+
+                return ListView.builder(
+                  padding: EdgeInsets.all(12),
+                  itemCount: docs.length,
+                  itemBuilder: (context, index) {
                     try {
-                      Incident incident = Incident.fromJson(
-                          document.data() as Map<String, dynamic>);
+                      Incident incident =
+                          Incident.fromJson(docs[index].data() as Map<String, dynamic>);
                       return Card(
-                        margin: EdgeInsets.all(8),
-                        elevation: 5,
-                        child: ListTile(
-                          leading: CircleAvatar(
-                            backgroundColor: getColorBasedOnStatus(
-                                incident.status as IncidentStatus?),
-                            child: getIconBasedOnStatus(
-                                incident.status as IncidentStatus?),
-                          ),
-                          title: Text(incident.description),
-                          subtitle: Text(incident.timestamp.toString()),
+                        margin: EdgeInsets.only(bottom: 12),
+                        elevation: 2,
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12)),
+                        child: InkWell(
+                          borderRadius: BorderRadius.circular(12),
                           onTap: () {
                             Navigator.push(
                               context,
@@ -105,13 +123,88 @@ class _IncidentDashboardPageState extends State<IncidentDashboardPage> {
                               ),
                             );
                           },
+                          child: Padding(
+                            padding: const EdgeInsets.all(16.0),
+                            child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                CircleAvatar(
+                                  radius: 24,
+                                  backgroundColor:
+                                      getColorBasedOnStatus(incident.status).withOpacity(0.15),
+                                  child: getIconBasedOnStatus(incident.status),
+                                ),
+                                SizedBox(width: 16),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Row(
+                                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                        children: [
+                                          Expanded(
+                                            child: Text(
+                                              incident.type ?? 'Insiden',
+                                              style: TextStyle(
+                                                  fontWeight: FontWeight.bold, fontSize: 16),
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
+                                          ),
+                                          SizedBox(width: 8),
+                                          Container(
+                                            padding: EdgeInsets.symmetric(
+                                                horizontal: 8, vertical: 4),
+                                            decoration: BoxDecoration(
+                                              color: getColorBasedOnStatus(incident.status)
+                                                  .withOpacity(0.1),
+                                              borderRadius: BorderRadius.circular(12),
+                                            ),
+                                            child: Text(
+                                              incident.status?.toString().split('.').last ??
+                                                  'Unknown',
+                                              style: TextStyle(
+                                                color: getColorBasedOnStatus(incident.status),
+                                                fontSize: 12,
+                                                fontWeight: FontWeight.bold,
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                      SizedBox(height: 8),
+                                      Text(
+                                        incident.description,
+                                        maxLines: 2,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: TextStyle(color: Colors.grey.shade700),
+                                      ),
+                                      SizedBox(height: 8),
+                                      Row(
+                                        children: [
+                                          Icon(Icons.access_time,
+                                              size: 14, color: Colors.grey.shade500),
+                                          SizedBox(width: 4),
+                                          Text(
+                                            "${incident.timestamp.day.toString().padLeft(2, '0')}/${incident.timestamp.month.toString().padLeft(2, '0')}/${incident.timestamp.year} ${incident.timestamp.hour.toString().padLeft(2, '0')}:${incident.timestamp.minute.toString().padLeft(2, '0')}",
+                                            style: TextStyle(
+                                                color: Colors.grey.shade500, fontSize: 12),
+                                          ),
+                                        ],
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
                         ),
                       );
                     } catch (e) {
                       print("Error while converting document to Incident: $e");
                       return SizedBox.shrink();
                     }
-                  }).toList(),
+                  },
                 );
               },
             ),
@@ -135,15 +228,16 @@ class _IncidentDashboardPageState extends State<IncidentDashboardPage> {
   }
 
   Icon getIconBasedOnStatus(IncidentStatus? status) {
+    Color color = getColorBasedOnStatus(status);
     switch (status) {
       case IncidentStatus.Pending:
-        return Icon(Icons.pending);
+        return Icon(Icons.pending_actions, color: color);
       case IncidentStatus.Resolved:
-        return Icon(Icons.check_circle);
+        return Icon(Icons.check_circle, color: color);
       case IncidentStatus.InProgress:
-        return Icon(Icons.sync);
+        return Icon(Icons.sync, color: color);
       default:
-        return Icon(Icons.info);
+        return Icon(Icons.info, color: color);
     }
   }
 }

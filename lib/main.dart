@@ -14,6 +14,7 @@ import 'package:police_patrol_app/viewsCommandCenter/incident-management-page.da
 import 'package:police_patrol_app/viewsCommandCenter/incident_dashboard_page.dart';
 import 'package:police_patrol_app/viewsCommandCenter/officer_monitoring_page.dart';
 import 'package:police_patrol_app/viewsCommandCenter/resource-management-page.dart';
+import 'package:police_patrol_app/viewsCommandCenter/data_analytics_page.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -145,6 +146,7 @@ class PolicePatrolApp extends StatelessWidget {
         '/incidentDashboard': (context) => IncidentDashboardPage(),
         '/officerMonitoring': (context) => OfficerMonitoringPage(),
         '/incidentManagement': (context) => IncidentManagementPage(),
+        '/dataAnalytics': (context) => const DataAnalyticsPage(),
         // ... Add other routes
       },
     );

@@ -8,7 +8,7 @@
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
 
     <application
-        android:label="police_patrol_app"
+        android:label="Patroli App"
         android:name=".FlutterMultiDexApplication"
         android:icon="@mipmap/ic_launcher"
         android:enableOnBackInvokedCallback="true">
