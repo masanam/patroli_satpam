@@ -62,6 +62,9 @@ android {
     buildTypes {
         release {
             signingConfig signingConfigs.debug
+            // Nonaktifkan minifikasi agar Firebase components tidak di-strip oleh R8
+            minifyEnabled false
+            shrinkResources false
         }
     }
 }
