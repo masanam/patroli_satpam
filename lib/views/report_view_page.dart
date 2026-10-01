@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:latlong2/latlong.dart' as ll;
 import 'package:police_patrol_app/services/auth_service.dart';
 import 'package:police_patrol_app/services/firebase_service.dart';
 import 'package:police_patrol_app/models/patrol_route.dart';
@@ -43,10 +44,14 @@ class _ReportViewPageState extends State<ReportViewPage> {
       setState(() {
         _routeIncidentCounts = counts;
       });
-      final scanCounts = await _firebaseService
-          .getCheckpointScanCounts(routes.map((route) => route.id).toList());
+
+      final routeIds = routes.map((route) => route.id).toList();
+      final scanCounts =
+          await _firebaseService.getCheckpointScanCounts(routeIds);
       if (!mounted) return;
-      setState(() => _checkpointScanCounts = scanCounts);
+      setState(() {
+        _checkpointScanCounts = scanCounts;
+      });
     });
 
     _reportsSubscription = _firebaseService
@@ -69,6 +74,24 @@ class _ReportViewPageState extends State<ReportViewPage> {
     }
     return null;
   }
+
+  /// Hitung total jarak rute dalam meter menggunakan Haversine
+  double _calcDistance(List<LocationPoint> locs) {
+    if (locs.length < 2) return 0;
+    const dist = ll.Distance();
+    var total = 0.0;
+    for (var i = 1; i < locs.length; i++) {
+      total += dist(
+        ll.LatLng(locs[i - 1].latitude, locs[i - 1].longitude),
+        ll.LatLng(locs[i].latitude, locs[i].longitude),
+      );
+    }
+    return total;
+  }
+
+  String _formatDistance(double meters) => meters >= 1000
+      ? '${(meters / 1000).toStringAsFixed(2)} km'
+      : '${meters.round()} m';
 
   String _formatDateTime(BuildContext context, DateTime value) {
     final local = value.toLocal();
@@ -122,7 +145,23 @@ class _ReportViewPageState extends State<ReportViewPage> {
       body: _loadingRoutes
           ? const Center(child: CircularProgressIndicator())
           : _patrolRoutes.isEmpty
-              ? const Center(child: Text('Belum ada laporan patroli.'))
+              ? const Center(
+                  child: Padding(
+                    padding: EdgeInsets.all(24),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.route_outlined, size: 48, color: Colors.blueGrey),
+                        SizedBox(height: 12),
+                        Text(
+                          'Belum ada data patroli.',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(color: Colors.blueGrey, fontSize: 15),
+                        ),
+                      ],
+                    ),
+                  ),
+                )
               : ListView.builder(
                   padding: const EdgeInsets.all(16),
                   itemCount: _patrolRoutes.length,
@@ -133,6 +172,11 @@ class _ReportViewPageState extends State<ReportViewPage> {
                         .difference(route.startTime);
                     final incidentCount = _routeIncidentCounts[route.id] ?? 0;
                     final scanCount = _checkpointScanCounts[route.id] ?? 0;
+                    final hasGps = route.locations.isNotEmpty;
+                    final distMeters = _calcDistance(route.locations);
+                    final avgSpeed = hasGps && duration.inSeconds > 0
+                        ? (distMeters / 1000) / (duration.inSeconds / 3600)
+                        : 0.0;
 
                     return Card(
                       margin: const EdgeInsets.only(bottom: 12),
@@ -183,8 +227,20 @@ class _ReportViewPageState extends State<ReportViewPage> {
                           ),
                           _detailRow(
                             'Titik GPS',
-                            '${route.locations.length}',
+                            hasGps ? '${route.locations.length} titik' : '—',
                             icon: Icons.location_on_outlined,
+                          ),
+                          _detailRow(
+                            'Jarak',
+                            hasGps ? _formatDistance(distMeters) : '—',
+                            icon: Icons.route_outlined,
+                          ),
+                          _detailRow(
+                            'Rata-rata',
+                            hasGps
+                                ? '${avgSpeed.toStringAsFixed(1)} km/j'
+                                : '—',
+                            icon: Icons.speed_outlined,
                           ),
                           _detailRow(
                             'Insiden',

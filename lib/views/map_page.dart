@@ -243,8 +243,31 @@ class MapController extends GetxController {
   void startRecording() {
     isRecording = true;
     update();
+    _createInitialRouteDocument();
     _startRouteRecording();
   }
+
+  /// Buat dokumen patrol route awal di Firestore agar
+  /// appendLocationToRoute dapat bekerja (butuh dokumen yang sudah ada).
+  Future<void> _createInitialRouteDocument() async {
+    final routeId = _currentPatrolRouteId;
+    final user = AuthService().currentUser;
+    if (routeId == null || user == null) return;
+    try {
+      await _firebaseService.patrolRoutesCollection.doc(routeId).set({
+        'id': routeId,
+        'officerId': user.uid,
+        'startTime': DateTime.now().millisecondsSinceEpoch,
+        'endTime': null,
+        'locations': <Map<String, dynamic>>[],
+        'incidents': null,
+        'sessionType': 'patrol',
+      });
+    } catch (e) {
+      print('_createInitialRouteDocument error: $e');
+    }
+  }
+
 
   Future<void> openCheckpointScanner(BuildContext context) async {
     final user = AuthService().currentUser;
@@ -294,8 +317,13 @@ class MapController extends GetxController {
 
   void addRouteMarkers(PatrolRoute route) {
     if (route.locations.isEmpty) return;
+    // Hapus marker lama dengan key yang sama sebelum menambahkan baru
+    // agar tidak terjadi error "Duplicate keys found"
+    final startKey = ValueKey('start_${route.id}');
+    final endKey = ValueKey('end_${route.id}');
+    markers.removeWhere((m) => m.key == startKey || m.key == endKey);
     markers.add(fm.Marker(
-      key: ValueKey('start_${route.id}'),
+      key: startKey,
       point: ll.LatLng(
           route.locations.first.latitude, route.locations.first.longitude),
       width: 40,
@@ -303,7 +331,7 @@ class MapController extends GetxController {
       child: const Icon(Icons.flag, color: Colors.green, size: 32),
     ));
     markers.add(fm.Marker(
-      key: ValueKey('end_${route.id}'),
+      key: endKey,
       point: ll.LatLng(
           route.locations.last.latitude, route.locations.last.longitude),
       width: 40,
@@ -314,6 +342,10 @@ class MapController extends GetxController {
   }
 
   void _updateIncidentMarkers() {
+    // Hapus incident marker lama agar tidak duplikat saat di-refresh
+    final incidentKeys = _incidents.map((i) => ValueKey(i.id)).toSet();
+    markers.removeWhere((m) => m.key is ValueKey<String> &&
+        incidentKeys.contains(m.key));
     markers.addAll(_incidents.map((incident) {
       return fm.Marker(
         key: ValueKey(incident.id),
@@ -330,13 +362,21 @@ class MapController extends GetxController {
     _currentRoute.clear();
     _locationSubscription = LocationService().locationStream.listen((location) {
       if (location.latitude != null && location.longitude != null) {
-        _currentRoute.add(LocationPoint(
+        final point = LocationPoint(
           latitude: location.latitude!,
           longitude: location.longitude!,
           timestamp: DateTime.now(),
-        ));
-      } else {
-        // Handle the case where latitude or longitude is null, if needed
+        );
+        _currentRoute.add(point);
+
+        // Append titik GPS ke Firestore secara langsung agar
+        // data location tersimpan realtime (bukan hanya saat stop)
+        final routeId = _currentPatrolRouteId;
+        if (routeId != null) {
+          _firebaseService.appendLocationToRoute(routeId, point).catchError((e) {
+            print('appendLocationToRoute error: $e');
+          });
+        }
       }
     });
   }
@@ -354,25 +394,33 @@ class MapController extends GetxController {
       return;
     }
     if (_currentRoute.isNotEmpty) {
-      PatrolRoute patrolRoute = PatrolRoute(
-        id: routeId,
-        officerId: user.uid,
-        startTime: _currentRoute.first.timestamp,
-        endTime: _currentRoute.last.timestamp,
-        locations: _currentRoute,
-      );
-      _firebaseService.addPatrolRoute(patrolRoute).then((_) {
-        // Using Get's built-in snackbar for displaying messages
-        Get.snackbar('Route Recording', 'Route recording stopped and saved.');
-        addRouteMarkers(patrolRoute);
-      }).catchError((error) {
-        Get.snackbar(
-            'Route Recording', 'Error saving route. Please try again.');
-      });
+      final endTime = _currentRoute.last.timestamp;
+      // Update endTime dan pastikan seluruh locations tersimpan
+      _firebaseService
+          .updatePatrolRouteLocations(
+            routeId: routeId,
+            locations: _currentRoute,
+            endTime: endTime,
+          )
+          .then((_) {
+            Get.snackbar('Route Recording', 'Route recording stopped and saved.');
+            final patrolRoute = PatrolRoute(
+              id: routeId,
+              officerId: user.uid,
+              startTime: _currentRoute.first.timestamp,
+              endTime: endTime,
+              locations: _currentRoute,
+            );
+            addRouteMarkers(patrolRoute);
+          })
+          .catchError((error) {
+            Get.snackbar(
+                'Route Recording', 'Error saving route. Please try again.');
+          });
     } else {
       Get.snackbar('Route Recording', 'No route recorded.');
     }
-    _currentPatrolRouteId = null; // Reset the current patrol route ID
+    _currentPatrolRouteId = null;
   }
 
   @override

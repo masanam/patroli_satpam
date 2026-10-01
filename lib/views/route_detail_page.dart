@@ -3,6 +3,7 @@ import 'package:flutter_map/flutter_map.dart' as fm;
 import 'package:latlong2/latlong.dart' as ll;
 import 'package:police_patrol_app/models/incident.dart';
 import 'package:police_patrol_app/models/patrol_route.dart';
+import 'package:police_patrol_app/models/patrol_scan.dart';
 import 'package:police_patrol_app/services/firebase_service.dart';
 
 class RouteDetailPage extends StatefulWidget {
@@ -17,6 +18,7 @@ class _RouteDetailPageState extends State<RouteDetailPage> {
   final _firebaseService = FirebaseService();
   final _mapController = fm.MapController();
   List<Incident> _incidents = [];
+  List<PatrolScan> _scans = [];
   bool _isLoading = true;
 
   @override
@@ -29,7 +31,16 @@ class _RouteDetailPageState extends State<RouteDetailPage> {
     try {
       final incidents = await _firebaseService
           .getIncidentsForPatrolRoute(widget.patrolRoute.id);
-      if (mounted) setState(() => _incidents = incidents);
+      final scans = await _firebaseService
+          .getScansForSession(widget.patrolRoute.id);
+      if (mounted) {
+        setState(() {
+          _incidents = incidents;
+          _scans = scans;
+        });
+      }
+    } catch (e) {
+      print('Error loading detail for route ${widget.patrolRoute.id}: $e');
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -38,10 +49,21 @@ class _RouteDetailPageState extends State<RouteDetailPage> {
   @override
   Widget build(BuildContext context) {
     final route = widget.patrolRoute;
-    final hasGps = route.locations.isNotEmpty;
+    
+    // Gunakan titik GPS dari scan jika tidak ada locations
+    final List<LocationPoint> effectiveLocations = route.locations.isNotEmpty
+        ? route.locations
+        : _scans
+            .map((s) => LocationPoint(
+                latitude: s.latitude,
+                longitude: s.longitude,
+                timestamp: s.scannedAt))
+            .toList();
+
+    final hasGps = effectiveLocations.isNotEmpty;
     final duration =
         (route.endTime ?? DateTime.now()).difference(route.startTime);
-    final distanceMeters = _routeDistance(route.locations);
+    final distanceMeters = _routeDistance(effectiveLocations);
     final averageSpeed = duration.inSeconds == 0
         ? 0.0
         : (distanceMeters / 1000) / (duration.inSeconds / 3600);
@@ -63,7 +85,7 @@ class _RouteDetailPageState extends State<RouteDetailPage> {
             const SizedBox(height: 16),
             _GpsMap(
               mapController: _mapController,
-              locations: route.locations,
+              locations: effectiveLocations,
               incidents: _incidents,
             ),
             const SizedBox(height: 16),
@@ -94,7 +116,7 @@ class _RouteDetailPageState extends State<RouteDetailPage> {
                 _MetricCard(
                     icon: Icons.location_searching_outlined,
                     label: 'Titik GPS',
-                    value: '${route.locations.length}'),
+                    value: '${effectiveLocations.length}'),
               ],
             ),
             const SizedBox(height: 20),
@@ -113,11 +135,11 @@ class _RouteDetailPageState extends State<RouteDetailPage> {
                 _InfoRow(
                     'Status GPS',
                     hasGps
-                        ? 'Terekam (${route.locations.length} titik)'
+                        ? 'Terekam (${effectiveLocations.length} titik)'
                         : 'Belum ada data GPS'),
                 if (hasGps)
                   _InfoRow(
-                      'Koordinat terakhir', _coordinate(route.locations.last)),
+                      'Koordinat terakhir', _coordinate(effectiveLocations.last)),
               ]),
             ),
             const SizedBox(height: 20),
@@ -138,13 +160,21 @@ class _RouteDetailPageState extends State<RouteDetailPage> {
                   child: Padding(
                       padding: EdgeInsets.all(24),
                       child: CircularProgressIndicator()))
-            else if (_incidents.isNotEmpty)
-              ..._incidents.map((incident) => _IncidentCard(
-                  incident: incident,
-                  onTap: () => _mapController.move(
-                      ll.LatLng(incident.latitude, incident.longitude), 16)))
+            else if (_incidents.isNotEmpty || _scans.isNotEmpty)
+              ...[
+                ..._incidents.map((incident) => _IncidentCard(
+                    incident: incident,
+                    onTap: () => _mapController.move(
+                        ll.LatLng(incident.latitude, incident.longitude), 16))),
+                ..._scans.map((scan) => _ActivityCard(
+                    activity: _RouteActivity(
+                        'Scan Checkpoint',
+                        'ID: ${scan.checkpointId}\nKoordinat: ${_coordinate(LocationPoint(latitude: scan.latitude, longitude: scan.longitude, timestamp: scan.scannedAt))}',
+                        scan.scannedAt,
+                        Icons.qr_code_scanner)))
+              ]
             else if (hasGps)
-              ..._dummyActivities(route.locations)
+              ..._dummyActivities(effectiveLocations)
                   .map((activity) => _ActivityCard(activity: activity))
             else
               const _EmptyState(),

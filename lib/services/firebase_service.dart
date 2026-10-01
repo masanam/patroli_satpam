@@ -291,26 +291,71 @@ class FirebaseService {
         .set(scan.toJson());
   }
 
+  Future<List<PatrolScan>> getScansForSession(String sessionId) async {
+    try {
+      final snapshot = await patrolRoutesCollection
+          .doc(sessionId)
+          .collection('scans')
+          .get();
+      final scans = snapshot.docs
+          .map((doc) => PatrolScan.fromJson(doc.data(), doc.id))
+          .toList();
+      scans.sort((a, b) => a.scannedAt.compareTo(b.scannedAt));
+      return scans;
+    } catch (e) {
+      print('Error getScansForSession: $e');
+      return [];
+    }
+  }
+
   Future<Map<String, int>> getCheckpointScanCounts(
       List<String> sessionIds) async {
     final counts = <String, int>{};
     final userId = _auth.currentUser?.uid;
-    if (userId == null) return counts;
-    for (var offset = 0; offset < sessionIds.length; offset += 30) {
-      final batch = sessionIds.skip(offset).take(30).toList();
-      final snapshot = await _firestore
-          .collectionGroup('scans')
-          .where('sessionId', whereIn: batch)
-          .where('officerId', isEqualTo: userId)
-          .get();
-      for (final doc in snapshot.docs) {
-        final sessionId = doc.data()['sessionId'] as String?;
-        if (sessionId != null) {
-          counts[sessionId] = (counts[sessionId] ?? 0) + 1;
+    if (userId == null || sessionIds.isEmpty) return counts;
+    
+    // Menghindari collectionGroup karena butuh composite index
+    await Future.wait(sessionIds.map((sessionId) async {
+      try {
+        final snapshot = await patrolRoutesCollection
+            .doc(sessionId)
+            .collection('scans')
+            .where('officerId', isEqualTo: userId)
+            .get();
+        if (snapshot.docs.isNotEmpty) {
+          counts[sessionId] = snapshot.docs.length;
         }
+      } catch (e) {
+        print('Error get scan counts for $sessionId: $e');
       }
-    }
+    }));
     return counts;
+  }
+
+  /// Mengambil set sessionId yang memiliki minimal 1 scan berhasil.
+  /// Digunakan untuk filter patrol routes di laporan.
+  Future<Set<String>> getSessionIdsWithScans(
+      List<String> sessionIds) async {
+    final result = <String>{};
+    final userId = _auth.currentUser?.uid;
+    if (userId == null || sessionIds.isEmpty) return result;
+
+    await Future.wait(sessionIds.map((sessionId) async {
+      try {
+        final snapshot = await patrolRoutesCollection
+            .doc(sessionId)
+            .collection('scans')
+            .where('officerId', isEqualTo: userId)
+            .limit(1)
+            .get();
+        if (snapshot.docs.isNotEmpty) {
+          result.add(sessionId);
+        }
+      } catch (e) {
+        print('Error get session scans for $sessionId: $e');
+      }
+    }));
+    return result;
   }
 
   // Retrieve all patrol routes recorded by a specific officer
@@ -329,6 +374,31 @@ class FirebaseService {
     return await patrolRoutesCollection
         .doc(patrolRoute.id)
         .update(patrolRoute.toJson());
+  }
+
+  /// Update hanya field locations dan endTime pada patrol route yang sudah ada.
+  /// Digunakan untuk menyimpan titik GPS secara incremental ke Firestore.
+  Future<void> updatePatrolRouteLocations({
+    required String routeId,
+    required List<LocationPoint> locations,
+    DateTime? endTime,
+  }) async {
+    final data = <String, dynamic>{
+      'locations': locations.map((l) => l.toJson()).toList(),
+    };
+    if (endTime != null) {
+      data['endTime'] = endTime.millisecondsSinceEpoch;
+    }
+    await patrolRoutesCollection.doc(routeId).update(data);
+  }
+
+  /// Append satu LocationPoint ke array locations di Firestore
+  /// tanpa harus membaca seluruh dokumen (menggunakan FieldValue.arrayUnion).
+  Future<void> appendLocationToRoute(
+      String routeId, LocationPoint point) async {
+    await patrolRoutesCollection.doc(routeId).update({
+      'locations': FieldValue.arrayUnion([point.toJson()]),
+    });
   }
 
   // Fetch all available resources (cars, equipment, manpower)

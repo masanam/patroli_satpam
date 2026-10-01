@@ -36,4 +36,23 @@ class PatrolScan {
       'clientScannedAt': scannedAt.millisecondsSinceEpoch,
     };
   }
+
+  factory PatrolScan.fromJson(Map<String, dynamic> json, String id) {
+    return PatrolScan(
+      id: id,
+      sessionId: json['sessionId'] as String? ?? '',
+      checkpointId: json['checkpointId'] as String? ?? '',
+      officerId: json['officerId'] as String? ?? '',
+      latitude: (json['latitude'] as num?)?.toDouble() ?? 0.0,
+      longitude: (json['longitude'] as num?)?.toDouble() ?? 0.0,
+      accuracy: (json['accuracy'] as num?)?.toDouble(),
+      isWithinRadius: json['isWithinRadius'] as bool? ?? false,
+      scannedAt: json['scannedAt'] != null
+          ? (json['scannedAt'] as Timestamp).toDate()
+          : (json['clientScannedAt'] != null
+              ? DateTime.fromMillisecondsSinceEpoch(
+                  json['clientScannedAt'] as int)
+              : DateTime.now()),
+    );
+  }
 }

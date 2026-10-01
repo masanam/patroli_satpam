@@ -25,39 +25,42 @@ class _DataAnalyticsPageState extends State<DataAnalyticsPage> {
         foregroundColor: Colors.black87,
         elevation: 0,
       ),
-      body: StreamBuilder<QuerySnapshot>(
-        stream: _db.collection('incidents').snapshots(),
-        builder: (context, snapshot) {
-          if (snapshot.hasError) {
-            return Center(child: Text('Error: ${snapshot.error}'));
-          }
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
-          }
+      body: SafeArea(
+        child: StreamBuilder<QuerySnapshot>(
+          stream: _db.collection('incidents').snapshots(),
+          builder: (context, snapshot) {
+            if (snapshot.hasError) {
+              return Center(child: Text('Error: ${snapshot.error}'));
+            }
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return const Center(child: CircularProgressIndicator());
+            }
 
-          final docs = snapshot.data!.docs;
-          if (docs.isEmpty) {
-            return const Center(child: Text('Tidak ada data insiden untuk dianalisis.'));
-          }
+            final docs = snapshot.data!.docs;
+            if (docs.isEmpty) {
+              return const Center(child: Text('Tidak ada data insiden untuk dianalisis.'));
+            }
 
-          // Hitung data untuk chart
-          int pending = 0;
-          int inProgress = 0;
-          int resolved = 0;
+            int pending = 0;
+            int inProgress = 0;
+            int resolved = 0;
 
-          for (var doc in docs) {
-            final data = doc.data() as Map<String, dynamic>;
-            final statusIndex = data['status'] as int?;
-            if (statusIndex == IncidentStatus.Pending.index) pending++;
-            else if (statusIndex == IncidentStatus.InProgress.index) inProgress++;
-            else if (statusIndex == IncidentStatus.Resolved.index) resolved++;
-          }
+            for (var doc in docs) {
+              final data = doc.data() as Map<String, dynamic>;
+              final statusIndex = data['status'] as int?;
+              if (statusIndex == IncidentStatus.Pending.index) {
+                pending++;
+              } else if (statusIndex == IncidentStatus.InProgress.index) {
+                inProgress++;
+              } else if (statusIndex == IncidentStatus.Resolved.index) {
+                resolved++;
+              }
+            }
 
-          final total = pending + inProgress + resolved;
+            final total = pending + inProgress + resolved;
 
-          return SingleChildScrollView(
-            child: Padding(
-              padding: const EdgeInsets.all(16.0),
+            return SingleChildScrollView(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
@@ -80,9 +83,9 @@ class _DataAnalyticsPageState extends State<DataAnalyticsPage> {
                             ),
                             textAlign: TextAlign.center,
                           ),
-                          const SizedBox(height: 32),
+                          const SizedBox(height: 24),
                           SizedBox(
-                            height: 260, // Diperbesar dari 220 untuk menghindari overflow
+                            height: 220,
                             child: PieChart(
                               PieChartData(
                                 pieTouchData: PieTouchData(
@@ -101,7 +104,7 @@ class _DataAnalyticsPageState extends State<DataAnalyticsPage> {
                                 ),
                                 borderData: FlBorderData(show: false),
                                 sectionsSpace: 4,
-                                centerSpaceRadius: 50,
+                                centerSpaceRadius: 40,
                                 sections: [
                                   _buildPieChartSectionData(
                                     value: pending.toDouble(),
@@ -125,7 +128,7 @@ class _DataAnalyticsPageState extends State<DataAnalyticsPage> {
                               ),
                             ),
                           ),
-                          const SizedBox(height: 32),
+                          const SizedBox(height: 24),
                           Wrap(
                             alignment: WrapAlignment.center,
                             spacing: 16,
@@ -135,16 +138,16 @@ class _DataAnalyticsPageState extends State<DataAnalyticsPage> {
                               _buildLegend(color: Colors.orange, text: 'In Progress'),
                               _buildLegend(color: Colors.green, text: 'Resolved'),
                             ],
-                          )
+                          ),
                         ],
                       ),
                     ),
                   ),
                 ],
               ),
-            ),
-          );
-        },
+            );
+          },
+        ),
       ),
     );
   }
@@ -211,7 +214,7 @@ class _DataAnalyticsPageState extends State<DataAnalyticsPage> {
 
     return PieChartSectionData(
       color: color,
-      value: value > 0 ? value : 0.001, // Hindari error FlChart jika value 0
+      value: value > 0 ? value : 0.001,
       title: value > 0 ? title : '',
       radius: radius,
       titleStyle: TextStyle(
@@ -224,6 +227,7 @@ class _DataAnalyticsPageState extends State<DataAnalyticsPage> {
 
   Widget _buildLegend({required Color color, required String text}) {
     return Row(
+      mainAxisSize: MainAxisSize.min,
       children: [
         Container(
           width: 16,
@@ -234,7 +238,7 @@ class _DataAnalyticsPageState extends State<DataAnalyticsPage> {
         Text(
           text,
           style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.black87),
-        )
+        ),
       ],
     );
   }

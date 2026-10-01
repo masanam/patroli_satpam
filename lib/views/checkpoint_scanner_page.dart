@@ -4,10 +4,12 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:location/location.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
+import 'package:police_patrol_app/models/patrol_route.dart';
 import 'package:police_patrol_app/models/patrol_scan.dart';
 import 'package:police_patrol_app/services/auth_service.dart';
 import 'package:police_patrol_app/services/firebase_service.dart';
 import 'package:uuid/uuid.dart';
+
 
 class CheckpointScannerPage extends StatefulWidget {
   final String sessionId;
@@ -50,10 +52,12 @@ class _CheckpointScannerPageState extends State<CheckpointScannerPage> {
 
     var stage = 'membaca checkpoint';
     try {
-      if (value.contains('/')) {
+      // Validasi format barcode: hanya proses jika nilai sesuai format checkpoint
+      final isValidFormat = RegExp(r'^CP-[A-Z0-9]+-[A-Z0-9]+$').hasMatch(value);
+      if (!isValidFormat) {
         throw StateError(
-          'QR terbaca sebagai "$value". Gunakan ID checkpoint saja, '
-          'contoh: CP-GATE-001.',
+          'QR tidak valid: "$value".\n'
+          'Pastikan Anda menscan QR checkpoint yang terdaftar (contoh: CP-GATE-001).',
         );
       }
 
@@ -114,6 +118,18 @@ class _CheckpointScannerPageState extends State<CheckpointScannerPage> {
       );
       stage = 'menyimpan hasil scan';
       await _firebaseService.addPatrolScan(scan);
+
+      // Append koordinat GPS ke locations array route utama
+      // agar Detail Route dapat menampilkan Jarak, Rata-rata & Titik GPS
+      await _firebaseService.appendLocationToRoute(
+        widget.sessionId,
+        LocationPoint(
+          latitude: latitude,
+          longitude: longitude,
+          timestamp: scannedAt,
+        ),
+      );
+
 
       if (!mounted) return;
       setState(() {

@@ -56,7 +56,7 @@ class PolicePatrolApp extends StatelessWidget {
     }
 
     return GetMaterialApp(
-      title: 'Police Patrol App',
+      title: 'Patroli App',
       theme: ThemeData(
         useMaterial3: true,
         visualDensity: VisualDensity.adaptivePlatformDensity,
